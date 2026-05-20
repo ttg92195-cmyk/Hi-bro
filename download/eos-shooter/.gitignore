@@ -15,15 +15,19 @@ cmake-build-*/
 *~
 .DS_Store
 
-# Compiled objects
+# Compiled objects (but NOT EOS SDK libs)
 *.o
 *.obj
 *.so
 *.dylib
 *.dll
+*.exe
+
+# Ignore .a and .lib everywhere EXCEPT EOS SDK
 *.a
 *.lib
-*.exe
+!third_party/eos-sdk/**/*.a
+!third_party/eos-sdk/**/*.lib
 
 # Android
 android/.gradle/
@@ -32,9 +36,6 @@ android/build/
 *.apk
 *.aab
 local.properties
-
-# EOS SDK (proprietary - do not commit)
-third_party/eos-sdk/
 
 # Raylib (submodule or cloned)
 third_party/raylib/
