@@ -15,21 +15,28 @@ cmake-build-*/
 *~
 .DS_Store
 
-# Compiled objects (but NOT EOS SDK libs)
+# Compiled objects (NOT EOS SDK libs)
 *.o
 *.obj
-*.so
-*.dylib
-*.dll
-*.exe
 
-# Ignore .a and .lib everywhere EXCEPT EOS SDK
+# Shared libraries - but allow EOS SDK
+*.so
+!third_party/eos-sdk/**/*.so
+
+# Static/Dynamic libs - but allow EOS SDK
 *.a
 *.lib
+*.dll
+*.dylib
+*.exe
 !third_party/eos-sdk/**/*.a
 !third_party/eos-sdk/**/*.lib
 
-# Android
+# Android AAR - allow EOS SDK
+*.aar
+!third_party/eos-sdk/**/*.aar
+
+# Android build
 android/.gradle/
 android/app/build/
 android/build/
@@ -39,6 +46,9 @@ local.properties
 
 # Raylib (submodule or cloned)
 third_party/raylib/
+
+# Temp extraction files
+eos-temp/
 
 # Assets that are too large for git
 assets/models/*.glb
@@ -52,7 +62,7 @@ __pycache__/
 # Logs
 *.log
 
-# Package files
+# Package files (NOT in third_party)
 *.zip
 *.tar.gz
 

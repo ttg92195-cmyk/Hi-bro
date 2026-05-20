@@ -1,6 +1,7 @@
 # ============================================================================
 # EOS Shooter - CMakeLists.txt
 # Cross-platform build configuration for Desktop and Android (NDK).
+# Supports both Real EOS SDK and Dev Mode (no SDK).
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.22)
@@ -92,38 +93,78 @@ else()
     endif()
 endif()
 
-# === EOS SDK ===
+# ============================================================================
+# === EOS SDK Integration ===
+# ============================================================================
 set(EOS_SDK_PATH "${CMAKE_SOURCE_DIR}/third_party/eos-sdk" CACHE PATH "EOS SDK path")
 
-if(EXISTS "${EOS_SDK_PATH}")
-    # Real EOS SDK integration
-    add_library(eos_sdk STATIC IMPORTED)
+# Check if real EOS SDK headers exist
+if(EXISTS "${EOS_SDK_PATH}/Include/eos_sdk.h")
+    message(STATUS "✅ EOS SDK found at ${EOS_SDK_PATH} - Real Multiplayer enabled!")
+    add_definitions(-DEOS_SDK_ENABLED)
 
     if(ANDROID)
-        set_target_properties(eos_sdk PROPERTIES
-            IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Android/arm64-v8a/libEOSSDK.a"
-            INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
-        )
+        # === Android: Use .so shared library ===
+        # The Android SDK provides .so files inside the AAR
+        # Check for .so files
+        if(EXISTS "${EOS_SDK_PATH}/Lib/Android/arm64-v8a/libEOSSDK.so")
+            add_library(eos_sdk SHARED IMPORTED)
+            set_target_properties(eos_sdk PROPERTIES
+                IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Android/arm64-v8a/libEOSSDK.so"
+                INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
+            )
+            message(STATUS "  Android arm64-v8a: Using libEOSSDK.so")
+        else()
+            message(WARNING "  Android libEOSSDK.so not found!")
+        endif()
+
     elseif(WIN32)
-        set_target_properties(eos_sdk PROPERTIES
-            IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Win64/Release/EOSSDK.lib"
-            INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
-        )
+        # === Windows: Use .lib ===
+        if(EXISTS "${EOS_SDK_PATH}/Lib/Win64/Release/EOSSDK.lib")
+            add_library(eos_sdk STATIC IMPORTED)
+            set_target_properties(eos_sdk PROPERTIES
+                IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Win64/Release/EOSSDK.lib"
+                INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
+            )
+            message(STATUS "  Windows: Using EOSSDK.lib")
+        else()
+            message(WARNING "  Windows EOSSDK.lib not found - download C SDK")
+        endif()
+
     elseif(APPLE)
-        set_target_properties(eos_sdk PROPERTIES
-            IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Mac/Release/libEOSSDK.a"
-            INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
-        )
+        # === macOS: Use .a ===
+        if(EXISTS "${EOS_SDK_PATH}/Lib/Mac/Release/libEOSSDK.a")
+            add_library(eos_sdk STATIC IMPORTED)
+            set_target_properties(eos_sdk PROPERTIES
+                IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Mac/Release/libEOSSDK.a"
+                INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
+            )
+        else()
+            message(WARNING "  macOS libEOSSDK.a not found - download C SDK")
+        endif()
+
     else()
-        set_target_properties(eos_sdk PROPERTIES
-            IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Linux/Release/libEOSSDK.a"
-            INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
-        )
+        # === Linux: Use .a ===
+        if(EXISTS "${EOS_SDK_PATH}/Lib/Linux/Release/libEOSSDK.a")
+            add_library(eos_sdk STATIC IMPORTED)
+            set_target_properties(eos_sdk PROPERTIES
+                IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Linux/Release/libEOSSDK.a"
+                INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
+            )
+        else()
+            message(WARNING "  Linux libEOSSDK.a not found - download C SDK")
+        endif()
     endif()
 
-    set(EOS_LINK_LIBS eos_sdk)
+    if(TARGET eos_sdk)
+        set(EOS_LINK_LIBS eos_sdk)
+    else()
+        message(WARNING "EOS SDK header found but library not found for this platform - building dev mode")
+        set(EOS_LINK_LIBS)
+    endif()
 else()
-    message(STATUS "EOS SDK not found - building in dev mode (no multiplayer)")
+    message(STATUS "❌ EOS SDK not found - building in Dev Mode (no multiplayer)")
+    message(STATUS "   To enable multiplayer: Download EOS SDK to third_party/eos-sdk/")
     set(EOS_LINK_LIBS)
 endif()
 
@@ -135,6 +176,7 @@ if(ANDROID)
     target_include_directories(eos-shooter PRIVATE
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/third_party/raylib/src
+        ${EOS_SDK_PATH}/Include
     )
 
     target_link_libraries(eos-shooter
@@ -144,12 +186,22 @@ if(ANDROID)
         log
         m
     )
+
+    # Copy EOS .so to libs directory for packaging
+    if(EXISTS "${EOS_SDK_PATH}/Lib/Android/arm64-v8a/libEOSSDK.so")
+        add_custom_command(TARGET eos-shooter POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${EOS_SDK_PATH}/Lib/Android/arm64-v8a/libEOSSDK.so"
+                $<TARGET_FILE_DIR:eos-shooter>/libEOSSDK.so
+        )
+    endif()
 else()
     # Desktop executable
     add_executable(eos-shooter ${GAME_SOURCES} ${GAME_HEADERS})
 
     target_include_directories(eos-shooter PRIVATE
         ${CMAKE_SOURCE_DIR}/src
+        ${EOS_SDK_PATH}/Include
     )
 
     target_link_libraries(eos-shooter
@@ -168,6 +220,15 @@ else()
         find_library(COREVIDEO CoreVideo)
         find_library(IOKIT IOKit)
         target_link_libraries(eos-shooter ${FOUNDATION} ${COREVIDEO} ${IOKIT})
+    endif()
+
+    # Copy EOS shared library next to executable (Linux)
+    if(EXISTS "${EOS_SDK_PATH}/Lib/Linux/Release/libEOSSDK.so")
+        add_custom_command(TARGET eos-shooter POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${EOS_SDK_PATH}/Lib/Linux/Release/libEOSSDK.so"
+                $<TARGET_FILE_DIR:eos-shooter>/libEOSSDK.so
+        )
     endif()
 endif()
 

@@ -12,21 +12,32 @@
 #include <thread>
 
 // ============================================================================
-// NOTE: In a production build, you would include the EOS SDK headers:
-// #include <eos_sdk.h>
-// #include <eos_auth.h>
-// #include <eos_sessions.h>
-// #include <eos_p2p.h>
-// #include <eos_voice.h>
-// #include <eos_stats.h>
-// #include <eos_achievements.h>
-// #include <eos_presence.h>
-// #include <eos_platform.h>
-//
-// This implementation provides the full integration logic. When building
-// with the actual EOS SDK, the placeholder calls should be replaced with
-// the real EOS API calls as indicated in comments.
+// EOS SDK Conditional Include
+// When EOS_SDK_ENABLED is defined (CMake detects SDK), use real headers.
+// Otherwise, compile in Dev Mode with simulated EOS behavior.
 // ============================================================================
+#ifdef EOS_SDK_ENABLED
+    #include <eos_sdk.h>
+    #include <eos_auth.h>
+    #include <eos_sessions.h>
+    #include <eos_p2p.h>
+    #include <eos_rtc.h>
+    #include <eos_rtc_audio.h>
+    #include <eos_stats.h>
+    #include <eos_achievements.h>
+    #include <eos_presence.h>
+    #include <eos_init.h>
+    #include <eos_logging.h>
+    #include <eos_common.h>
+    #include <eos_version.h>
+    #ifdef PLATFORM_ANDROID
+        #include <Android/eos_Android.h>
+    #endif
+    #define EOS_REAL_SDK 1
+#else
+    #define EOS_REAL_SDK 0
+    // Dev Mode: All EOS calls are simulated
+#endif
 
 namespace EOSShooter {
 
