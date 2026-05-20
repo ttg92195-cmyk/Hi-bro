@@ -1,0 +1,1 @@
+-keep class com.epicgames.mobile.eossdk** {public *; native <methods>;}
