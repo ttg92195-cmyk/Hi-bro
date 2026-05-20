@@ -1,0 +1,63 @@
+# ============================================================================
+# EOS Shooter - .gitignore
+# ============================================================================
+
+# Build directories
+build/
+out/
+cmake-build-*/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Compiled objects
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.a
+*.lib
+*.exe
+
+# Android
+android/.gradle/
+android/app/build/
+android/build/
+*.apk
+*.aab
+local.properties
+
+# EOS SDK (proprietary - do not commit)
+third_party/eos-sdk/
+
+# Raylib (submodule or cloned)
+third_party/raylib/
+
+# Assets that are too large for git
+assets/models/*.glb
+assets/models/*.gltf
+assets/textures/*.png.bak
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# Package files
+*.zip
+*.tar.gz
+
+# CMake generated
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+Makefile
