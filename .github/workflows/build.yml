@@ -1,0 +1,252 @@
+# ============================================================================
+# EOS Shooter - GitHub Actions CI/CD
+# Builds Android APK and Desktop binaries automatically.
+# ============================================================================
+
+name: Build & Release
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  BUILD_TYPE: Release
+  NDK_VERSION: '25.2.9519653'
+  CMAKE_VERSION: '3.22.1'
+
+jobs:
+  # ============================================================================
+  # Job 1: Build Android APK
+  # ============================================================================
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager --install "ndk;${{ env.NDK_VERSION }}"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Clone Raylib for Android
+        run: |
+          mkdir -p third_party
+          if [ ! -d "third_party/raylib" ]; then
+            git clone --depth 1 https://github.com/raysan5/raylib.git third_party/raylib
+          fi
+
+      - name: Download EOS SDK
+        run: |
+          mkdir -p third_party/eos-sdk
+          # EOS SDK must be downloaded manually from Epic Games Developer Portal
+          # https://dev.epicgames.com/docs/services/en-US/EpicAccountServices/index.html
+          # Place the SDK in third_party/eos-sdk/ with the following structure:
+          #   third_party/eos-sdk/Include/
+          #   third_party/eos-sdk/Lib/Android/arm64-v8a/libEOSSDK.a
+          #   third_party/eos-sdk/Lib/Android/armeabi-v7a/libEOSSDK.a
+          #
+          # For CI without EOS SDK, the build will proceed in dev mode (no multiplayer)
+          echo "EOS SDK path: third_party/eos-sdk"
+          if [ -f "third_party/eos-sdk/Include/eos_sdk.h" ]; then
+            echo "EOS SDK found - building with multiplayer support"
+          else
+            echo "EOS SDK not found - building in dev mode (no multiplayer)"
+          fi
+
+      - name: Build Android APK (arm64-v8a)
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            -PANDROID_NDK=$ANDROID_NDK_HOME \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DPLATFORM_ANDROID=ON
+
+      - name: Sign APK
+        uses: r0adkll/sign-android-release@v1
+        id: sign_apk
+        with:
+          releaseDirectory: android/app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY_BASE64 }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
+
+      - name: Rename APK
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          if [ "$VERSION" = "$GITHUB_REF" ]; then
+            VERSION="dev-$(echo $GITHUB_SHA | cut -c1-7)"
+          fi
+          mv ${{ steps.sign_apk.outputs.signedReleaseFile }} \
+             eos-shooter-${VERSION}-arm64.apk || true
+          # If signing failed, use unsigned APK
+          if [ ! -f "eos-shooter-${VERSION}-arm64.apk" ]; then
+            cp android/app/build/outputs/apk/release/app-release-unsigned.apk \
+               eos-shooter-${VERSION}-arm64.apk || true
+          fi
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eos-shooter-android-apk
+          path: eos-shooter-*.apk
+          retention-days: 30
+
+  # ============================================================================
+  # Job 2: Build Desktop (Windows, Linux, macOS)
+  # ============================================================================
+  build-desktop:
+    name: Build ${{ matrix.platform.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: Linux
+            os: ubuntu-latest
+            cmake_args: ''
+            artifact: eos-shooter-linux
+          - name: Windows
+            os: windows-latest
+            cmake_args: '-G "MinGW Makefiles"'
+            artifact: eos-shooter-windows
+          - name: macOS
+            os: macos-latest
+            cmake_args: ''
+            artifact: eos-shooter-macos
+
+    runs-on: ${{ matrix.platform.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev libx11-dev libxrandr-dev \
+            libxi-dev libgl1-mesa-dev libglu1-mesa-dev \
+            libxcursor-dev libxinerama-dev libwayland-dev \
+            libxkbcommon-dev cmake build-essential
+
+      - name: Clone Raylib
+        run: |
+          mkdir -p third_party
+          if [ ! -d "third_party/raylib" ]; then
+            git clone --depth 1 https://github.com/raysan5/raylib.git third_party/raylib
+          fi
+        shell: bash
+
+      - name: Configure CMake
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ${{ matrix.platform.cmake_args }}
+        shell: bash
+
+      - name: Build
+        run: |
+          cd build
+          cmake --build . --config ${{ env.BUILD_TYPE }} -- -j$(nproc 2>/dev/null || echo 2)
+        shell: bash
+
+      - name: Package artifact
+        run: |
+          mkdir -p dist
+          cp build/eos-shooter${{ runner.os == 'Windows' && '.exe' || '' }} dist/ || true
+          cp -r assets dist/assets 2>/dev/null || true
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.artifact }}
+          path: dist/
+          retention-days: 30
+
+  # ============================================================================
+  # Job 3: Release (only on version tags)
+  # ============================================================================
+  release:
+    name: Create Release
+    needs: [build-android, build-desktop]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: EOS Shooter ${{ github.ref_name }}
+          body: |
+            ## EOS Shooter - Multiplayer FPS
+
+            ### Features
+            - C++ Shooting Game with Raylib
+            - Epic Online Services (EOS) - Free Multiplayer
+            - Real-time P2P Networking
+            - Voice Chat Support
+            - Android APK + Desktop builds
+
+            ### Installation (Android)
+            1. Download the APK file
+            2. Enable "Install from unknown sources"
+            3. Install and play!
+
+            ### Build from Source
+            ```bash
+            git clone https://github.com/YOUR_USERNAME/eos-shooter.git
+            cd eos-shooter
+            mkdir build && cd build
+            cmake .. -DCMAKE_BUILD_TYPE=Release
+            cmake --build . -j$(nproc)
+            ```
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/eos-shooter-android-apk/*.apk
+            artifacts/eos-shooter-linux/*
+            artifacts/eos-shooter-windows/*
+            artifacts/eos-shooter-macos/*
