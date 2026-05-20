@@ -63,20 +63,14 @@ jobs:
             git clone --depth 1 https://github.com/raysan5/raylib.git third_party/raylib
           fi
 
-      - name: Download EOS SDK
+      - name: Verify EOS SDK
         run: |
-          mkdir -p third_party/eos-sdk
-          # EOS SDK must be downloaded manually from Epic Games Developer Portal
-          # https://dev.epicgames.com/docs/services/en-US/EpicAccountServices/index.html
-          # Place the SDK in third_party/eos-sdk/ with the following structure:
-          #   third_party/eos-sdk/Include/
-          #   third_party/eos-sdk/Lib/Android/arm64-v8a/libEOSSDK.a
-          #   third_party/eos-sdk/Lib/Android/armeabi-v7a/libEOSSDK.a
-          #
-          # For CI without EOS SDK, the build will proceed in dev mode (no multiplayer)
           echo "EOS SDK path: third_party/eos-sdk"
           if [ -f "third_party/eos-sdk/Include/eos_sdk.h" ]; then
             echo "EOS SDK found - building with multiplayer support"
+            echo "Android AAR: $(ls -la third_party/eos-sdk/Lib/Android/*.aar 2>/dev/null || echo 'not found')"
+            echo "arm64-v8a .so: $(ls -la third_party/eos-sdk/Lib/Android/arm64-v8a/libEOSSDK.so 2>/dev/null || echo 'not found')"
+            echo "x86_64 .so: $(ls -la third_party/eos-sdk/Lib/Android/x86_64/libEOSSDK.so 2>/dev/null || echo 'not found')"
           else
             echo "EOS SDK not found - building in dev mode (no multiplayer)"
           fi

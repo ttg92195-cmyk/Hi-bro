@@ -82,18 +82,41 @@ To enable multiplayer, you need the EOS SDK:
    - Client ID
    - Client Secret
 3. Download the [EOS SDK](https://dev.epicgames.com/docs/services/en-US/EpicAccountServices/index.html)
+   - **Android SDK**: Download "SDK for Android" from Epic Developer Portal
+   - **C SDK**: Download "C SDK" for Desktop (Windows/Linux/macOS)
 4. Extract to `third_party/eos-sdk/` with structure:
    ```
    third_party/eos-sdk/
    ├── Include/
-   │   └── eos_sdk.h
-   └── Lib/
-       ├── Android/
-       │   ├── arm64-v8a/libEOSSDK.a
-       │   └── armeabi-v7a/libEOSSDK.a
-       ├── Linux/Release/libEOSSDK.a
-       ├── Win64/Release/EOSSDK.lib
-       └── Mac/Release/libEOSSDK.a
+   │   ├── Android/
+   │   │   ├── eos_Android.h
+   │   │   └── eos_Android_base.h
+   │   ├── eos_sdk.h
+   │   ├── eos_auth.h
+   │   ├── eos_lobby.h
+   │   ├── eos_sessions.h
+   │   ├── eos_p2p.h
+   │   └── ... (78+ header files)
+   ├── Lib/
+   │   └── Android/
+   │       ├── eossdk-StaticSTDC-release.aar  (Android Archive Library)
+   │       ├── arm64-v8a/libEOSSDK.so          (extracted from AAR)
+   │       └── x86_64/libEOSSDK.so             (extracted from AAR)
+   ├── Tools/
+   │   ├── EOS_DevAuthTool-darwin-x64-1.2.1.zip
+   │   ├── EOS_DevAuthTool-win32-x64-1.2.1.zip
+   │   └── EOS_FileDecryptionTool.exe
+   ├── Samples/
+   │   └── Android/Login/  (EOS Login sample app)
+   └── ThirdPartyNotices/
+       └── ThirdPartySoftwareNotice.txt
+   ```
+   For Desktop builds, also add C SDK libraries:
+   ```
+   third_party/eos-sdk/Lib/
+   ├── Linux/Release/libEOSSDK.a
+   ├── Win64/Release/EOSSDK.lib
+   └── Mac/Release/libEOSSDK.a
    ```
 5. Set credentials in code or environment variables
 
