@@ -35,6 +35,9 @@ struct Wall {
     float height;
     float thickness;
     Color color;
+    Wall() = default;
+    Wall(Vector3 s, Vector3 e, float h, float t, Color c)
+        : start(s), end(e), height(h), thickness(t), color(c) {}
 };
 
 struct MapSpawnPoint {

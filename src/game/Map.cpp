@@ -38,24 +38,24 @@ void Map::GenerateUrbanWarehouse() {
 
     // Floor and outer walls
     // Outer walls (perimeter)
-    walls_.push_back({{-40, 0, -40}, {40, 0, -40}, 10, 1.0f, DARKGRAY});  // North
-    walls_.push_back({{-40, 0, 40}, {40, 0, 40}, 10, 1.0f, DARKGRAY});    // South
-    walls_.push_back({{-40, 0, -40}, {-40, 0, 40}, 10, 1.0f, DARKGRAY});  // West
-    walls_.push_back({{40, 0, -40}, {40, 0, 40}, 10, 1.0f, DARKGRAY});    // East
+    walls_.push_back(Wall{Vector3{-40, 0, -40}, Vector3{40, 0, -40}, 10, 1.0f, DARKGRAY});  // North
+    walls_.push_back(Wall{Vector3{-40, 0, 40}, Vector3{40, 0, 40}, 10, 1.0f, DARKGRAY});    // South
+    walls_.push_back(Wall{Vector3{-40, 0, -40}, Vector3{-40, 0, 40}, 10, 1.0f, DARKGRAY});  // West
+    walls_.push_back(Wall{Vector3{40, 0, -40}, Vector3{40, 0, 40}, 10, 1.0f, DARKGRAY});    // East
 
     // Interior walls - warehouse sections
-    walls_.push_back({{-15, 0, -20}, {-15, 0, 10}, 6, 0.5f, GRAY});
-    walls_.push_back({{15, 0, -10}, {15, 0, 20}, 6, 0.5f, GRAY});
-    walls_.push_back({{-20, 0, 10}, {10, 0, 10}, 6, 0.5f, GRAY});
-    walls_.push_back({{-5, 0, -30}, {20, 0, -30}, 4, 0.5f, LIGHTGRAY});
+    walls_.push_back(Wall{Vector3{-15, 0, -20}, Vector3{-15, 0, 10}, 6, 0.5f, GRAY});
+    walls_.push_back(Wall{Vector3{15, 0, -10}, Vector3{15, 0, 20}, 6, 0.5f, GRAY});
+    walls_.push_back(Wall{Vector3{-20, 0, 10}, Vector3{10, 0, 10}, 6, 0.5f, GRAY});
+    walls_.push_back(Wall{Vector3{-5, 0, -30}, Vector3{20, 0, -30}, 4, 0.5f, LIGHTGRAY});
 
     // Crates / cover objects (represented as short thick walls)
-    walls_.push_back({{-25, 0, -25}, {-23, 0, -23}, 2, 2.0f, BROWN});
-    walls_.push_back({{25, 0, 25}, {27, 0, 27}, 2, 2.0f, BROWN});
-    walls_.push_back({{-30, 0, 15}, {-28, 0, 17}, 2, 2.0f, BROWN});
-    walls_.push_back({{10, 0, -15}, {12, 0, -13}, 2, 2.0f, BROWN});
-    walls_.push_back({{30, 0, -20}, {32, 0, -18}, 2, 2.0f, BROWN});
-    walls_.push_back({{-10, 0, 30}, {-8, 0, 32}, 2, 2.0f, BROWN});
+    walls_.push_back(Wall{Vector3{-25, 0, -25}, Vector3{-23, 0, -23}, 2, 2.0f, BROWN});
+    walls_.push_back(Wall{Vector3{25, 0, 25}, Vector3{27, 0, 27}, 2, 2.0f, BROWN});
+    walls_.push_back(Wall{Vector3{-30, 0, 15}, Vector3{-28, 0, 17}, 2, 2.0f, BROWN});
+    walls_.push_back(Wall{Vector3{10, 0, -15}, Vector3{12, 0, -13}, 2, 2.0f, BROWN});
+    walls_.push_back(Wall{Vector3{30, 0, -20}, Vector3{32, 0, -18}, 2, 2.0f, BROWN});
+    walls_.push_back(Wall{Vector3{-10, 0, 30}, Vector3{-8, 0, 32}, 2, 2.0f, BROWN});
 
     // Player spawn points
     spawnPositions_ = {
@@ -87,15 +87,15 @@ void Map::GenerateDesertOutpost() {
     bounds_ = {120, 10, 120};
 
     // Outer walls
-    walls_.push_back({{-60, 0, -60}, {60, 0, -60}, 8, 1.0f, SAND});
-    walls_.push_back({{-60, 0, 60}, {60, 0, 60}, 8, 1.0f, SAND});
-    walls_.push_back({{-60, 0, -60}, {-60, 0, 60}, 8, 1.0f, SAND});
-    walls_.push_back({{60, 0, -60}, {60, 0, 60}, 8, 1.0f, SAND});
+    walls_.push_back(Wall{Vector3{-60, 0, -60}, Vector3{60, 0, -60}, 8, 1.0f, SAND});
+    walls_.push_back(Wall{Vector3{-60, 0, 60}, Vector3{60, 0, 60}, 8, 1.0f, SAND});
+    walls_.push_back(Wall{Vector3{-60, 0, -60}, Vector3{-60, 0, 60}, 8, 1.0f, SAND});
+    walls_.push_back(Wall{Vector3{60, 0, -60}, Vector3{60, 0, 60}, 8, 1.0f, SAND});
 
     // Buildings
-    walls_.push_back({{-30, 0, -30}, {-20, 0, -30}, 6, 8.0f, BEIGE});
-    walls_.push_back({{20, 0, 20}, {30, 0, 20}, 6, 8.0f, BEIGE});
-    walls_.push_back({{-10, 0, 10}, {10, 0, 10}, 4, 5.0f, BEIGE});
+    walls_.push_back(Wall{Vector3{-30, 0, -30}, Vector3{-20, 0, -30}, 6, 8.0f, BEIGE});
+    walls_.push_back(Wall{Vector3{20, 0, 20}, Vector3{30, 0, 20}, 6, 8.0f, BEIGE});
+    walls_.push_back(Wall{Vector3{-10, 0, 10}, Vector3{10, 0, 10}, 4, 5.0f, BEIGE});
 
     spawnPositions_ = {
         {-50, 1, -50}, {50, 1, -50}, {-50, 1, 50}, {50, 1, 50}
@@ -108,10 +108,10 @@ void Map::GenerateDesertOutpost() {
 void Map::GenerateArcticBase() {
     bounds_ = {90, 12, 90};
 
-    walls_.push_back({{-45, 0, -45}, {45, 0, -45}, 10, 1.0f, LIGHTGRAY});
-    walls_.push_back({{-45, 0, 45}, {45, 0, 45}, 10, 1.0f, LIGHTGRAY});
-    walls_.push_back({{-45, 0, -45}, {-45, 0, 45}, 10, 1.0f, LIGHTGRAY});
-    walls_.push_back({{45, 0, -45}, {45, 0, 45}, 10, 1.0f, LIGHTGRAY});
+    walls_.push_back(Wall{Vector3{-45, 0, -45}, Vector3{45, 0, -45}, 10, 1.0f, LIGHTGRAY});
+    walls_.push_back(Wall{Vector3{-45, 0, 45}, Vector3{45, 0, 45}, 10, 1.0f, LIGHTGRAY});
+    walls_.push_back(Wall{Vector3{-45, 0, -45}, Vector3{-45, 0, 45}, 10, 1.0f, LIGHTGRAY});
+    walls_.push_back(Wall{Vector3{45, 0, -45}, Vector3{45, 0, 45}, 10, 1.0f, LIGHTGRAY});
 
     spawnPositions_ = {
         {-40, 1, -40}, {40, 1, -40}, {-40, 1, 40}, {40, 1, 40}
@@ -349,8 +349,8 @@ Vector3 Map::ResolveCollision(const Vector3& position, float radius) const {
     }
 
     // Clamp to map bounds
-    resolved.x = Clamp(resolved.x, -bounds_.x + radius, bounds_.x - radius);
-    resolved.z = Clamp(resolved.z, -bounds_.z + radius, bounds_.z - radius);
+    resolved.x = std::clamp(resolved.x, -bounds_.x + radius, bounds_.x - radius);
+    resolved.z = std::clamp(resolved.z, -bounds_.z + radius, bounds_.z - radius);
 
     return resolved;
 }

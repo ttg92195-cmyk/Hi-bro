@@ -313,7 +313,7 @@ void Game::UpdatePlaying(float deltaTime) {
                 Bullet bullet;
                 bullet.position = origin;
                 bullet.direction = direction;
-                bullet.velocity = direction * weapon->GetBulletSpeed();
+                bullet.velocity = { direction.x * weapon->GetBulletSpeed(), direction.y * weapon->GetBulletSpeed(), direction.z * weapon->GetBulletSpeed() };
                 bullet.damage = weapon->GetDamage();
                 bullet.range = weapon->GetRange();
                 bullet.ownerId = localPlayer_->GetPlayerId();
@@ -870,7 +870,7 @@ void Game::OnPlayerShot(uint64_t playerId, const Vector3& origin, const Vector3&
         Bullet bullet;
         bullet.position = origin;
         bullet.direction = direction;
-        bullet.velocity = direction * 300.0f;
+        bullet.velocity = { direction.x * 300.0f, direction.y * 300.0f, direction.z * 300.0f };
         bullet.damage = 25.0f;
         bullet.ownerId = playerId;
         bullet.lifetime = 0.0f;
