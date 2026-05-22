@@ -390,6 +390,9 @@ void Game::UpdatePlaying(float deltaTime) {
             [](const Bullet& b) { return b.IsExpired(); }),
         bullets_.end());
 
+    // Update map (pickup respawn, animation timers)
+    map_->Update(deltaTime);
+
     // Check collisions
     CheckBulletCollisions();
     CheckPickupCollisions();

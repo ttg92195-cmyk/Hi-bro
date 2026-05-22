@@ -35,6 +35,7 @@ set(GAME_SOURCES
     src/game/Weapon.cpp
     src/game/Enemy.cpp
     src/game/Map.cpp
+    src/game/TextureGenerator.cpp
     src/game/ParticleSystem.cpp
     src/game/CameraController.cpp
     src/multiplayer/EOSManager.cpp
@@ -50,6 +51,7 @@ set(GAME_HEADERS
     src/game/Weapon.h
     src/game/Enemy.h
     src/game/Map.h
+    src/game/TextureGenerator.h
     src/game/ParticleSystem.h
     src/game/CameraController.h
     src/multiplayer/EOSManager.h
