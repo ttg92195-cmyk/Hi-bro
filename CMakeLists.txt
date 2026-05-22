@@ -111,33 +111,55 @@ endif()
 # === EOS SDK ===
 set(EOS_SDK_PATH "${CMAKE_SOURCE_DIR}/third_party/eos-sdk" CACHE PATH "EOS SDK path")
 
-if(EXISTS "${EOS_SDK_PATH}")
+if(EXISTS "${EOS_SDK_PATH}/Include/eos_sdk.h")
     # Real EOS SDK integration
-    add_library(eos_sdk STATIC IMPORTED)
-
     if(ANDROID)
+        # Android uses shared library (.so)
+        add_library(eos_sdk SHARED IMPORTED)
         set_target_properties(eos_sdk PROPERTIES
-            IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Android/arm64-v8a/libEOSSDK.a"
+            IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Android/arm64-v8a/libEOSSDK.so"
             INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
         )
-    elseif(WIN32)
-        set_target_properties(eos_sdk PROPERTIES
-            IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Win64/Release/EOSSDK.lib"
-            INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
-        )
-    elseif(APPLE)
-        set_target_properties(eos_sdk PROPERTIES
-            IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Mac/Release/libEOSSDK.a"
-            INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
-        )
+        set(EOS_LINK_LIBS eos_sdk)
     else()
-        set_target_properties(eos_sdk PROPERTIES
-            IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Linux/Release/libEOSSDK.a"
-            INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
-        )
-    endif()
+        # Desktop platforms use static library
+        add_library(eos_sdk STATIC IMPORTED)
 
-    set(EOS_LINK_LIBS eos_sdk)
+        if(WIN32)
+            if(EXISTS "${EOS_SDK_PATH}/Lib/Win64/Release/EOSSDK.lib")
+                set_target_properties(eos_sdk PROPERTIES
+                    IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Win64/Release/EOSSDK.lib"
+                    INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
+                )
+                set(EOS_LINK_LIBS eos_sdk)
+            else()
+                message(STATUS "EOS SDK Windows lib not found - building without multiplayer")
+                set(EOS_LINK_LIBS)
+            endif()
+        elseif(APPLE)
+            if(EXISTS "${EOS_SDK_PATH}/Lib/Mac/Release/libEOSSDK.a")
+                set_target_properties(eos_sdk PROPERTIES
+                    IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Mac/Release/libEOSSDK.a"
+                    INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
+                )
+                set(EOS_LINK_LIBS eos_sdk)
+            else()
+                message(STATUS "EOS SDK macOS lib not found - building without multiplayer")
+                set(EOS_LINK_LIBS)
+            endif()
+        else()
+            if(EXISTS "${EOS_SDK_PATH}/Lib/Linux/Release/libEOSSDK.a")
+                set_target_properties(eos_sdk PROPERTIES
+                    IMPORTED_LOCATION "${EOS_SDK_PATH}/Lib/Linux/Release/libEOSSDK.a"
+                    INTERFACE_INCLUDE_DIRECTORIES "${EOS_SDK_PATH}/Include"
+                )
+                set(EOS_LINK_LIBS eos_sdk)
+            else()
+                message(STATUS "EOS SDK Linux lib not found - building without multiplayer")
+                set(EOS_LINK_LIBS)
+            endif()
+        endif()
+    endif()
 else()
     message(STATUS "EOS SDK not found - building in dev mode (no multiplayer)")
     set(EOS_LINK_LIBS)
@@ -151,6 +173,7 @@ if(ANDROID)
     target_include_directories(eos-shooter PRIVATE
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/third_party/raylib/src
+        ${EOS_SDK_PATH}/Include
     )
 
     target_link_libraries(eos-shooter
@@ -160,6 +183,15 @@ if(ANDROID)
         log
         m
     )
+
+    # Copy EOS SDK .so to jniLibs for APK packaging
+    if(EXISTS "${EOS_SDK_PATH}/Lib/Android/arm64-v8a/libEOSSDK.so")
+        add_custom_command(TARGET eos-shooter POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${EOS_SDK_PATH}/Lib/Android/arm64-v8a/libEOSSDK.so"
+                "${CMAKE_SOURCE_DIR}/android/app/libs/arm64-v8a/libEOSSDK.so"
+        )
+    endif()
 else()
     # Desktop executable
     add_executable(eos-shooter ${GAME_SOURCES} ${GAME_HEADERS})
