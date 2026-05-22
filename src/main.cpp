@@ -1,34 +1,23 @@
 // ============================================================================
 // EOS Shooter - main.cpp
 // Entry point for the game application.
-// On Android, uses android_main() as required by NativeActivity + Raylib.
-// On Desktop, uses standard int main().
+// On Android, raylib's native_app_glue provides android_main() which calls
+// main(). We just need to ensure InitWindow() is called BEFORE any other
+// raylib functions on Android.
 // ============================================================================
 
 #include "game/Game.h"
 #include "utils/AudioManager.h"
-
-#if defined(PLATFORM_ANDROID)
-#include <android_native_app_glue.h>
-#endif
-
 #include <iostream>
 
 using namespace EOSShooter;
 
+int main() {
 #if defined(PLATFORM_ANDROID)
-// ============================================================================
-// Android Entry Point
-// On Android, the NativeActivity framework calls android_main() instead of
-// main(). Raylib requires InitWindow() to be called BEFORE any other raylib
-// functions because it sets up the android_app context, EGL surface, and
-// OpenGL ES context. We call InitWindow() here, then pass the real screen
-// dimensions to Game::Initialize().
-// ============================================================================
-void android_main(struct android_app* app) {
-    // CRITICAL: InitWindow MUST be called first on Android.
-    // This sets up the android_app context, creates the EGL surface,
-    // and initializes the OpenGL ES context.
+    // CRITICAL: On Android, InitWindow() MUST be called before any other
+    // raylib functions. It sets up the android_app context, creates the
+    // EGL surface, and initializes the OpenGL ES context.
+    // Game::Initialize() will detect Android and skip its own InitWindow() call.
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(0, 0, "EOS Shooter");
 
@@ -39,26 +28,22 @@ void android_main(struct android_app* app) {
     int screenHeight = GetScreenHeight();
     TraceLog(LOG_INFO, "EOS SHOOTER: Screen size %dx%d", screenWidth, screenHeight);
 
-    // Create and initialize the game (InitWindow is NOT called inside
-    // Game::Initialize on Android — it was already called above)
+    // Initialize game with real screen dimensions
+    // Game::Initialize() will skip InitWindow() on Android since we already called it
     Game game;
     if (!game.Initialize(screenWidth, screenHeight, "EOS Shooter")) {
         TraceLog(LOG_ERROR, "EOS SHOOTER: Failed to initialize game on Android!");
         CloseWindow();
-        return;
+        return -1;
     }
 
     // Main game loop
     game.Run();
 
-    // Cleanup
+    // Cleanup window (Game::Shutdown() skips CloseWindow() on Android)
     CloseWindow();
-}
 #else
-// ============================================================================
-// Desktop Entry Point (Linux, Windows, macOS)
-// ============================================================================
-int main() {
+    // Desktop: standard initialization
     std::cout << "========================================" << std::endl;
     std::cout << "    EOS SHOOTER - Multiplayer FPS" << std::endl;
     std::cout << "    Powered by Raylib + Epic Online" << std::endl;
@@ -73,7 +58,7 @@ int main() {
 
     // Main game loop
     game.Run();
+#endif
 
     return 0;
 }
-#endif
