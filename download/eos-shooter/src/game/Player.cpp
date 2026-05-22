@@ -7,6 +7,7 @@
 #include "../utils/Math.h"
 #include <algorithm>
 #include <cmath>
+#include <memory>
 
 namespace EOSShooter {
 
@@ -75,7 +76,7 @@ void Player::Render() {
 
     // Name tag (above head)
     if (!isLocal_) {
-        DrawText3D(name_.c_str(), {pos.x, pos.y + height + 0.6f, pos.z}, 0.3f, WHITE);
+        DrawText(name_.c_str(), (int)pos.x, (int)(pos.y + height + 0.6f), 12, WHITE);
     }
 
     // Weapon visual
@@ -134,7 +135,7 @@ void Player::HandleInput(float deltaTime) {
     Vector2 mouseDelta = GetMouseDelta();
     rotation_.y -= mouseDelta.x * 0.003f;     // Yaw
     rotation_.x -= mouseDelta.y * 0.003f;     // Pitch
-    rotation_.x = Clamp(rotation_.x, -1.5f, 1.5f); // Limit pitch
+    rotation_.x = Clamp(rotation_.x, -1.5f, 1.5f); // Limit pitch  (raylib Clamp)
 
     // === Movement (WASD) ===
     Vector3 moveDir = {0, 0, 0};
@@ -199,9 +200,9 @@ void Player::HandleInput(float deltaTime) {
     }
 
     // === Weapon Switch ===
-    if (IsKeyPressed(KEY_1)) SwitchWeapon(0);
-    if (IsKeyPressed(KEY_2)) SwitchWeapon(1);
-    if (IsKeyPressed(KEY_3)) SwitchWeapon(2);
+    if (IsKeyPressed(KEY_ONE)) SwitchWeapon(0);
+    if (IsKeyPressed(KEY_TWO)) SwitchWeapon(1);
+    if (IsKeyPressed(KEY_THREE)) SwitchWeapon(2);
 
     // Mouse wheel for weapon switch
     float wheel = GetMouseWheelMove();
@@ -401,7 +402,7 @@ void Player::PickupWeapon(WeaponType type) {
 }
 
 bool Player::IsReloading() const {
-    Weapon* weapon = GetCurrentWeapon();
+    const Weapon* weapon = GetCurrentWeapon();
     return weapon ? weapon->IsReloading() : false;
 }
 

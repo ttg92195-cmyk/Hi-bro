@@ -4,6 +4,8 @@
 
 #include "Bullet.h"
 #include "../utils/Math.h"
+#include <algorithm>
+#include <cstdint>
 
 namespace EOSShooter {
 
@@ -64,9 +66,9 @@ void Bullet::Render() const {
             if (type == BulletType::TRACER) trailColor = RED;
             if (type == BulletType::EXPLOSIVE) trailColor = ORANGE;
 
-            uint8_t alpha = (uint8_t)(trail[i].alpha * 200);
-            DrawLine3D(trail[i - 1].position, trail[i].position,
-                       {trailColor.r, trailColor.g, trailColor.b, alpha});
+            Color trailAlpha = trailColor;
+            trailAlpha.a = (unsigned char)(trail[i].alpha * 200);
+            DrawLine3D(trail[i - 1].position, trail[i].position, trailAlpha);
         }
     }
 

@@ -9,6 +9,8 @@
 #include <string>
 #include <array>
 #include <vector>
+#include <cstdint>
+#include <memory>
 
 namespace EOSShooter {
 
@@ -126,7 +128,6 @@ public:
     // === Setters ===
     void SetIsLocal(bool local) { isLocal_ = local; }
     void SetTeamId(TeamId team) { teamId_ = team; }
-    void SetPosition(const Vector3& pos) { position_ = pos; }
     void AddKill() { stats_.kills++; stats_.score += 100; }
     void AddDeath() { stats_.deaths++; }
     void AddAssist() { stats_.assists++; stats_.score += 50; }

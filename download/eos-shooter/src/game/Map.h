@@ -54,7 +54,7 @@ public:
     void RenderPickups() const;
 
     // === Collision ===
-    RayHitInfo Raycast(const Ray& ray, float maxDistance) const;
+    RayCollision Raycast(const Ray& ray, float maxDistance) const;
     bool CheckCollision(const Vector3& position, float radius) const;
     Vector3 ResolveCollision(const Vector3& position, float radius) const;
 

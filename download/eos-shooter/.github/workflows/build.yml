@@ -20,7 +20,7 @@ env:
 
 jobs:
   # ============================================================================
-  # Job 1: Build Android APK
+  # Job 1: Build Android APK (using CMake + NDK directly)
   # ============================================================================
   build-android:
     name: Build Android APK
@@ -47,15 +47,6 @@ jobs:
           sdkmanager --install "ndk;${{ env.NDK_VERSION }}"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
 
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
-          restore-keys: gradle-${{ runner.os }}-
-
       - name: Clone Raylib for Android
         run: |
           mkdir -p third_party
@@ -68,53 +59,38 @@ jobs:
           echo "EOS SDK path: third_party/eos-sdk"
           if [ -f "third_party/eos-sdk/Include/eos_sdk.h" ]; then
             echo "EOS SDK found - building with multiplayer support"
-            echo "Android AAR: $(ls -la third_party/eos-sdk/Lib/Android/*.aar 2>/dev/null || echo 'not found')"
-            echo "arm64-v8a .so: $(ls -la third_party/eos-sdk/Lib/Android/arm64-v8a/libEOSSDK.so 2>/dev/null || echo 'not found')"
-            echo "x86_64 .so: $(ls -la third_party/eos-sdk/Lib/Android/x86_64/libEOSSDK.so 2>/dev/null || echo 'not found')"
+            echo "Android arm64-v8a .so: $(ls -la third_party/eos-sdk/Lib/Android/arm64-v8a/libEOSSDK.so 2>/dev/null || echo 'not found')"
           else
             echo "EOS SDK not found - building in dev mode (no multiplayer)"
           fi
 
-      - name: Build Android APK (arm64-v8a)
-        working-directory: android
+      - name: Build with CMake + NDK (arm64-v8a)
         run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease \
-            -PANDROID_NDK=$ANDROID_NDK_HOME \
+          mkdir -p build-android
+          cd build-android
+          cmake .. \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-24 \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-            -DPLATFORM_ANDROID=ON
+            -DPLATFORM_ANDROID=ON \
+            -DANDROID_STL=c++_shared
+          cmake --build . --config ${{ env.BUILD_TYPE }} -- -j$(nproc)
 
-      - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
-        id: sign_apk
-        with:
-          releaseDirectory: android/app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY_BASE64 }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: "34.0.0"
-
-      - name: Rename APK
+      - name: Prepare APK output
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          if [ "$VERSION" = "$GITHUB_REF" ]; then
-            VERSION="dev-$(echo $GITHUB_SHA | cut -c1-7)"
-          fi
-          mv ${{ steps.sign_apk.outputs.signedReleaseFile }} \
-             eos-shooter-${VERSION}-arm64.apk || true
-          # If signing failed, use unsigned APK
-          if [ ! -f "eos-shooter-${VERSION}-arm64.apk" ]; then
-            cp android/app/build/outputs/apk/release/app-release-unsigned.apk \
-               eos-shooter-${VERSION}-arm64.apk || true
-          fi
+          mkdir -p dist/android
+          cp build-android/libeos-shooter.so dist/android/ 2>/dev/null || true
+          # Copy EOS SDK .so if exists
+          cp third_party/eos-sdk/Lib/Android/arm64-v8a/libEOSSDK.so dist/android/ 2>/dev/null || true
+          echo "Build output:"
+          ls -la dist/android/ 2>/dev/null || echo "No output files"
 
-      - name: Upload APK artifact
+      - name: Upload Android artifact
         uses: actions/upload-artifact@v4
         with:
-          name: eos-shooter-android-apk
-          path: eos-shooter-*.apk
+          name: eos-shooter-android
+          path: dist/android/
           retention-days: 30
 
   # ============================================================================
@@ -182,6 +158,10 @@ jobs:
         run: |
           mkdir -p dist
           cp build/eos-shooter${{ runner.os == 'Windows' && '.exe' || '' }} dist/ || true
+          # Copy EOS SDK shared lib if exists
+          cp build/libEOSSDK.so dist/ 2>/dev/null || true
+          cp build/libEOSSDK.dylib dist/ 2>/dev/null || true
+          cp build/EOSSDK.dll dist/ 2>/dev/null || true
           cp -r assets dist/assets 2>/dev/null || true
         shell: bash
 
@@ -222,17 +202,17 @@ jobs:
             - Epic Online Services (EOS) - Free Multiplayer
             - Real-time P2P Networking
             - Voice Chat Support
-            - Android APK + Desktop builds
+            - Android + Desktop builds
 
             ### Installation (Android)
-            1. Download the APK file
-            2. Enable "Install from unknown sources"
-            3. Install and play!
+            1. Download the Android artifact
+            2. The .so files can be used in an Android Studio project
+            3. Build APK from Android Studio
 
             ### Build from Source
             ```bash
-            git clone https://github.com/YOUR_USERNAME/eos-shooter.git
-            cd eos-shooter
+            git clone https://github.com/ttg92195-cmyk/Hi-bro.git
+            cd Hi-bro
             mkdir build && cd build
             cmake .. -DCMAKE_BUILD_TYPE=Release
             cmake --build . -j$(nproc)
@@ -240,7 +220,7 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            artifacts/eos-shooter-android-apk/*.apk
+            artifacts/eos-shooter-android/*
             artifacts/eos-shooter-linux/*
             artifacts/eos-shooter-windows/*
             artifacts/eos-shooter-macos/*

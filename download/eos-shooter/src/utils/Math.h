@@ -7,6 +7,7 @@
 #include "raylib.h"
 #include <cmath>
 #include <cstdlib>
+#include <cfloat>
 
 namespace EOSShooter {
 namespace Math {
