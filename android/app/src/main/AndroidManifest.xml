@@ -8,8 +8,12 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
-    <!-- OpenGL ES 3.0 required -->
-    <uses-feature android:glEsVersion="0x00030000" android:required="true" />
+    <!-- FIX #15: Changed required OpenGL ES version from 3.0 to 2.0.
+         Requiring GLES 3.0 prevents the app from running on many devices
+         that only support GLES 2.0. Raylib works fine with GLES 2.0 on
+         Android. If GLES 3.0 features are needed, they should be checked
+         at runtime via eglGetProcAddress, not forced at install time. -->
+    <uses-feature android:glEsVersion="0x00020000" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="true" />
 
     <application

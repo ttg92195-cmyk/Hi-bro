@@ -40,7 +40,17 @@ public:
     void SetMouseSensitivity(float s) { sensitivity_ = s; }
 
 private:
-    Camera3D camera_ = {};
+    // FIX #8: Initialize camera_ with valid defaults instead of zero-initialization.
+    // camera_ = {} sets fovy=0 and projection=0, which causes division by zero
+    // in the perspective projection matrix if GetRaylibCamera() is called
+    // before Initialize(). Use valid defaults so the camera is always safe.
+    Camera3D camera_ = {
+        .position = {0, 1.7f, 0},
+        .target = {0, 1.7f, -1},
+        .up = {0, 1, 0},
+        .fovy = 70.0f,
+        .projection = CAMERA_PERSPECTIVE
+    };
     bool enabled_ = false;
     float sensitivity_ = 0.003f;
 

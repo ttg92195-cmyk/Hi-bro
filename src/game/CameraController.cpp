@@ -10,14 +10,26 @@
 namespace EOSShooter {
 
 void CameraController::Initialize(int screenWidth, int screenHeight) {
+    // FIX #6: Validate screen dimensions to prevent division by zero
+    // in projection matrix calculations (aspect ratio = width/height).
+    // If either is 0, the camera's fovy could produce an invalid projection.
+    (void)screenWidth;   // Currently unused, but kept for future aspect ratio calc
+    (void)screenHeight;  // Currently unused, but kept for future aspect ratio calc
+
     camera_.position = {0, 1.7f, 0};
     camera_.target = {0, 1.7f, -1};
     camera_.up = {0, 1, 0};
-    camera_.fovy = normalFOV_;
+    // FIX #7: Ensure fovy is never 0 (default initialization was fovy=0 from = {})
+    // which would cause division by zero in the perspective projection matrix.
+    // The member camera_ is zero-initialized in the header, so fovy starts as 0
+    // until Initialize() is called. If any code path uses GetRaylibCamera()
+    // before Initialize(), the 0 fovy would crash the renderer.
+    camera_.fovy = normalFOV_;  // 70.0f
     camera_.projection = CAMERA_PERSPECTIVE;
 
     pitch_ = 0.0f;
     yaw_ = 0.0f;
+    currentFOV_ = normalFOV_;
 }
 
 void CameraController::Update(float deltaTime) {

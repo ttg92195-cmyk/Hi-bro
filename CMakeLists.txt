@@ -95,7 +95,11 @@ else()
         set(SUPPORT_PLATFORM_DESKTOP OFF CACHE BOOL "" FORCE)
         set(SUPPORT_PLATFORM_ANDROID ON CACHE BOOL "" FORCE)
         set(SUPPORT_GRAPHICS_API_OPENGL_ES20 ON CACHE BOOL "" FORCE)
-        set(SUPPORT_GRAPHICS_API_OPENGL_ES30 ON CACHE BOOL "" FORCE)
+        # FIX #16: Don't force-enable GLES 3.0 support. Let raylib detect
+        # the device's GLES version at runtime. Forcing GLES 3.0 causes
+        # raylib to try creating a GLES 3.0 context, which can fail on
+        # devices that only support GLES 2.0, causing an immediate crash.
+        # set(SUPPORT_GRAPHICS_API_OPENGL_ES30 ON CACHE BOOL "" FORCE)
         set(SUPPORT_GRAPHICS_API_OPENGL_33 OFF CACHE BOOL "" FORCE)
         set(SUPPORT_GRAPHICS_API_OPENGL_43 OFF CACHE BOOL "" FORCE)
         set(USE_EXTERNAL_GLFW OFF CACHE BOOL "" FORCE)
@@ -176,6 +180,27 @@ if(ANDROID)
         ${EOS_SDK_PATH}/Include
     )
 
+    # FIX #13: On Android, raylib requires the native_app_glue module for
+    # the ANativeActivity_onCreate entry point and android_main() loop.
+    # If raylib is built as a static library, the native_app_glue code must
+    # be linked. We include it from the NDK as a safety net.
+    # Note: raylib 5.0 should embed native_app_glue in its static library,
+    # but this ensures it's available if that doesn't work for some reason.
+    if(DEFINED CMAKE_ANDROID_NDK)
+        set(NATIVE_APP_GLUE_SRC
+            "${CMAKE_ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c"
+        )
+    elseif(DEFINED ANDROID_NDK)
+        set(NATIVE_APP_GLUE_SRC
+            "${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c"
+        )
+    endif()
+    if(DEFINED NATIVE_APP_GLUE_SRC AND EXISTS ${NATIVE_APP_GLUE_SRC})
+        target_sources(eos-shooter PRIVATE ${NATIVE_APP_GLUE_SRC})
+        get_filename_component(NDK_GLUE_INCLUDE "${NATIVE_APP_GLUE_SRC}" DIRECTORY)
+        target_include_directories(eos-shooter PRIVATE ${NDK_GLUE_INCLUDE})
+    endif()
+
     target_link_libraries(eos-shooter
         raylib
         ${EOS_LINK_LIBS}
@@ -184,9 +209,14 @@ if(ANDROID)
         m
         EGL
         GLESv2
-        GLESv3
         OpenSLES
     )
+    # FIX #14: Removed GLESv3 from link libraries. Many Android devices only
+    # support GLES 2.0, and linking against GLESv3 causes the dynamic linker
+    # to fail on those devices. Raylib's GLES 3.0 features are used via
+    # function pointers loaded at runtime (via eglGetProcAddress), not via
+    # direct linking. If GLES 3.0 is needed, it should be loaded dynamically.
+    # Also, GLESv2 already provides the EGL functions needed by raylib.
 
     # Copy EOS SDK .so to jniLibs for APK packaging
     if(EXISTS "${EOS_SDK_PATH}/Lib/Android/arm64-v8a/libEOSSDK.so")

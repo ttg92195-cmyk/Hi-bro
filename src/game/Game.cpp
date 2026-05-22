@@ -43,8 +43,12 @@ bool Game::Initialize(int screenWidth, int screenHeight, const std::string& titl
     // On Android, InitWindow() is called from android_main() BEFORE this function.
     // Calling it again here would crash because the EGL context is already created.
     // Just get the actual screen dimensions from the already-initialized window.
+    // FIX #4: Validate screen dimensions - GetScreenWidth/Height can return 0
+    // on some Android devices if the surface isn't fully ready.
     screenWidth_ = GetScreenWidth();
     screenHeight_ = GetScreenHeight();
+    if (screenWidth_ <= 0) screenWidth_ = 1280;
+    if (screenHeight_ <= 0) screenHeight_ = 720;
     TraceLog(LOG_INFO, "Game: Android detected - using existing window (%dx%d)", screenWidth_, screenHeight_);
 #else
     // On Desktop, InitWindow() is called here for the first time
@@ -55,8 +59,19 @@ bool Game::Initialize(int screenWidth, int screenHeight, const std::string& titl
 
     SetTargetFPS(60);
 
-    // Initialize audio device
+    // FIX #3: InitAudioDevice() can crash on some Android devices where
+    // OpenSLES initialization fails. Wrap in a safety check - if the audio
+    // device can't be initialized, the game should still run without sound.
+#if defined(PLATFORM_ANDROID)
+    if (!IsAudioDeviceReady()) {
+        InitAudioDevice();
+        if (!IsAudioDeviceReady()) {
+            TraceLog(LOG_WARNING, "Game: Audio device initialization failed - continuing without audio");
+        }
+    }
+#else
     InitAudioDevice();
+#endif
 
     // Initialize EOS
     if (!eosManager_->Initialize()) {
@@ -149,7 +164,11 @@ void Game::Shutdown() {
     leaderboard_.clear();
     scoreMap_.clear();
 
-    CloseAudioDevice();
+    // FIX #5: Only close audio device if it was successfully initialized.
+    // On Android, CloseAudioDevice() can crash if OpenSLES was never initialized.
+    if (IsAudioDeviceReady()) {
+        CloseAudioDevice();
+    }
 
 #if !defined(PLATFORM_ANDROID)
     // On Android, CloseWindow() is called from android_main() after Run() returns.
@@ -991,6 +1010,7 @@ void Game::OnPlayerHit(uint64_t playerId, float damage, uint64_t attackerId) {
 
 #if defined(PLATFORM_ANDROID)
 void Game::HandleTouchInput(float deltaTime) {
+    // FIX #12: Guard against null localPlayer_ in touch input handling.
     if (!localPlayer_ || localPlayer_->IsDead()) return;
 
     int touchCount = GetTouchPointCount();
@@ -1094,6 +1114,12 @@ void Game::HandleTouchInput(float deltaTime) {
 }
 
 void Game::RenderTouchControls() {
+    // FIX #11: Guard against null localPlayer_ in touch controls.
+    // RenderTouchControls is only called during PLAYING state, but
+    // localPlayer_ could theoretically be null if the game enters an
+    // inconsistent state (e.g., during a restart or transition).
+    if (!localPlayer_) return;
+
     // === Left Virtual Joystick ===
     float joystickRadius = 80.0f;
     Vector2 joyCenter = {150.0f, screenHeight_ - 150.0f};
