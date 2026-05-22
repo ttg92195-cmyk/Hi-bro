@@ -86,6 +86,11 @@ else()
     # Android: Raylib is built as a static library with NDK
     set(RAYLIB_PATH "${CMAKE_SOURCE_DIR}/third_party/raylib" CACHE PATH "Raylib source path")
     if(EXISTS "${RAYLIB_PATH}/CMakeLists.txt")
+        # Disable desktop-only options for Android
+        set(PLATFORM_ANDROID ON CACHE BOOL "Android platform" FORCE)
+        set(CUSTOMIZE_BUILD OFF CACHE BOOL "Disable raylib customize" FORCE)
+        set(BUILD_EXAMPLES OFF CACHE BOOL "Don't build raylib examples" FORCE)
+        set(BUILD_GAMES OFF CACHE BOOL "Don't build raylib games" FORCE)
         add_subdirectory(${RAYLIB_PATH} raylib)
     else()
         message(WARNING "Raylib not found at ${RAYLIB_PATH}. Please clone raylib into third_party/")
