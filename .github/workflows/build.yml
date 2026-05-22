@@ -81,9 +81,8 @@ jobs:
           ./gradlew assembleRelease
 
       - name: Sign APK
-        continue-on-error: true
-        uses: r0adkll/sign-android-release@v1
         id: sign_apk
+        uses: r0adkll/sign-android-release@v1
         with:
           releaseDirectory: android/app/build/outputs/apk/release
           signingKeyBase64: ${{ secrets.SIGNING_KEY_BASE64 }}
@@ -94,18 +93,30 @@ jobs:
           BUILD_TOOLS_VERSION: "34.0.0"
 
       - name: Rename APK
+        if: always()
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           if [ "$VERSION" = "$GITHUB_REF" ]; then
             VERSION="dev-$(echo $GITHUB_SHA | cut -c1-7)"
           fi
-          mv ${{ steps.sign_apk.outputs.signedReleaseFile }} \
-             eos-shooter-${VERSION}-arm64.apk || true
-          # If signing failed, use unsigned APK
-          if [ ! -f "eos-shooter-${VERSION}-arm64.apk" ]; then
-            cp android/app/build/outputs/apk/release/app-release-unsigned.apk \
-               eos-shooter-${VERSION}-arm64.apk || true
+          # Use signed APK if available, otherwise fall back to unsigned
+          SIGNED_FILE="${{ steps.sign_apk.outputs.signedReleaseFile }}"
+          if [ -n "$SIGNED_FILE" ] && [ -f "$SIGNED_FILE" ]; then
+            echo "Using signed APK"
+            cp "$SIGNED_FILE" eos-shooter-${VERSION}-arm64.apk
+          else
+            echo "Signing failed or not available, using unsigned APK"
+            UNSIGNED="android/app/build/outputs/apk/release/app-release-unsigned.apk"
+            if [ -f "$UNSIGNED" ]; then
+              cp "$UNSIGNED" eos-shooter-${VERSION}-arm64.apk
+            else
+              echo "ERROR: No APK found!"
+              ls -la android/app/build/outputs/apk/release/ || true
+              exit 1
+            fi
           fi
+          echo "Final APK: eos-shooter-${VERSION}-arm64.apk"
+          ls -la eos-shooter-${VERSION}-arm64.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
