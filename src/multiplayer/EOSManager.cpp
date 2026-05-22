@@ -6,6 +6,7 @@
 // ============================================================================
 
 #include "EOSManager.h"
+#include "raylib.h"
 #include <cstring>
 #include <cstdlib>
 #include <chrono>

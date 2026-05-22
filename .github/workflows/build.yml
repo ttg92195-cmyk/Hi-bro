@@ -60,7 +60,7 @@ jobs:
         run: |
           mkdir -p third_party
           if [ ! -d "third_party/raylib" ]; then
-            git clone --depth 1 https://github.com/raysan5/raylib.git third_party/raylib
+            git clone --depth 1 --branch 5.0 https://github.com/raysan5/raylib.git third_party/raylib
           fi
 
       - name: Download EOS SDK
@@ -165,7 +165,7 @@ jobs:
         run: |
           mkdir -p third_party
           if [ ! -d "third_party/raylib" ]; then
-            git clone --depth 1 https://github.com/raysan5/raylib.git third_party/raylib
+            git clone --depth 1 --branch 5.0 https://github.com/raysan5/raylib.git third_party/raylib
           fi
         shell: bash
 
