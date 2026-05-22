@@ -87,10 +87,10 @@ void Map::GenerateDesertOutpost() {
     bounds_ = {120, 10, 120};
 
     // Outer walls
-    walls_.push_back(Wall{Vector3{-60, 0, -60}, Vector3{60, 0, -60}, 8, 1.0f, SAND});
-    walls_.push_back(Wall{Vector3{-60, 0, 60}, Vector3{60, 0, 60}, 8, 1.0f, SAND});
-    walls_.push_back(Wall{Vector3{-60, 0, -60}, Vector3{-60, 0, 60}, 8, 1.0f, SAND});
-    walls_.push_back(Wall{Vector3{60, 0, -60}, Vector3{60, 0, 60}, 8, 1.0f, SAND});
+    walls_.push_back(Wall{Vector3{-60, 0, -60}, Vector3{60, 0, -60}, 8, 1.0f, BEIGE});
+    walls_.push_back(Wall{Vector3{-60, 0, 60}, Vector3{60, 0, 60}, 8, 1.0f, BEIGE});
+    walls_.push_back(Wall{Vector3{-60, 0, -60}, Vector3{-60, 0, 60}, 8, 1.0f, BEIGE});
+    walls_.push_back(Wall{Vector3{60, 0, -60}, Vector3{60, 0, 60}, 8, 1.0f, BEIGE});
 
     // Buildings
     walls_.push_back(Wall{Vector3{-30, 0, -30}, Vector3{-20, 0, -30}, 6, 8.0f, BEIGE});
@@ -215,23 +215,89 @@ void Map::SpawnPickups() {
     pickups_.clear();
 
     // Health pickups
-    pickups_.push_back({PickupType::HEALTH, {-20, 0.5f, 0}, 50.0f});
-    pickups_.push_back({PickupType::HEALTH, {20, 0.5f, 0}, 50.0f});
-    pickups_.push_back({PickupType::HEALTH, {0, 0.5f, -25}, 50.0f});
+    {
+        Pickup p;
+        p.type = PickupType::HEALTH;
+        p.position = {-20, 0.5f, 0};
+        p.value = 50.0f;
+        pickups_.push_back(p);
+    }
+    {
+        Pickup p;
+        p.type = PickupType::HEALTH;
+        p.position = {20, 0.5f, 0};
+        p.value = 50.0f;
+        pickups_.push_back(p);
+    }
+    {
+        Pickup p;
+        p.type = PickupType::HEALTH;
+        p.position = {0, 0.5f, -25};
+        p.value = 50.0f;
+        pickups_.push_back(p);
+    }
 
     // Armor pickups
-    pickups_.push_back({PickupType::ARMOR, {-10, 0.5f, -20}, 50.0f});
-    pickups_.push_back({PickupType::ARMOR, {10, 0.5f, 20}, 50.0f});
+    {
+        Pickup p;
+        p.type = PickupType::ARMOR;
+        p.position = {-10, 0.5f, -20};
+        p.value = 50.0f;
+        pickups_.push_back(p);
+    }
+    {
+        Pickup p;
+        p.type = PickupType::ARMOR;
+        p.position = {10, 0.5f, 20};
+        p.value = 50.0f;
+        pickups_.push_back(p);
+    }
 
     // Ammo pickups
-    pickups_.push_back({PickupType::AMMO, {0, 0.5f, 0}, 60.0f});
-    pickups_.push_back({PickupType::AMMO, {-30, 0.5f, -30}, 60.0f});
-    pickups_.push_back({PickupType::AMMO, {30, 0.5f, 30}, 60.0f});
+    {
+        Pickup p;
+        p.type = PickupType::AMMO;
+        p.position = {0, 0.5f, 0};
+        p.value = 60.0f;
+        pickups_.push_back(p);
+    }
+    {
+        Pickup p;
+        p.type = PickupType::AMMO;
+        p.position = {-30, 0.5f, -30};
+        p.value = 60.0f;
+        pickups_.push_back(p);
+    }
+    {
+        Pickup p;
+        p.type = PickupType::AMMO;
+        p.position = {30, 0.5f, 30};
+        p.value = 60.0f;
+        pickups_.push_back(p);
+    }
 
     // Weapon pickups
-    pickups_.push_back({PickupType::WEAPON, {-25, 0.5f, 15}, 0, WeaponType::SHOTGUN});
-    pickups_.push_back({PickupType::WEAPON, {25, 0.5f, -15}, 0, WeaponType::SNIPER_RIFLE});
-    pickups_.push_back({PickupType::WEAPON, {0, 0.5f, 30}, 0, WeaponType::RPG});
+    {
+        Pickup p;
+        p.type = PickupType::WEAPON;
+        p.position = {-25, 0.5f, 15};
+        p.weaponType = WeaponType::SHOTGUN;
+        pickups_.push_back(p);
+    }
+    {
+        Pickup p;
+        p.type = PickupType::WEAPON;
+        p.position = {25, 0.5f, -15};
+        p.weaponType = WeaponType::SNIPER_RIFLE;
+        pickups_.push_back(p);
+    }
+    {
+        Pickup p;
+        p.type = PickupType::WEAPON;
+        p.position = {0, 0.5f, 30};
+        p.weaponType = WeaponType::RPG;
+        pickups_.push_back(p);
+    }
 }
 
 // ============================================================================

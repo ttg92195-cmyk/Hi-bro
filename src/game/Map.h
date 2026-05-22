@@ -27,6 +27,7 @@ struct Pickup {
     bool active = true;
     float respawnTimer = 0.0f;
     float respawnTime = 30.0f;
+    Pickup() = default;
 };
 
 struct Wall {
