@@ -161,6 +161,11 @@ jobs:
             libxcursor-dev libxinerama-dev libwayland-dev \
             libxkbcommon-dev cmake build-essential
 
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.25.x'
+
       - name: Clone Raylib
         run: |
           mkdir -p third_party
