@@ -67,6 +67,7 @@ public:
     void StopCrouch();
     void SetVelocity(const Vector3& vel) { velocity_ = vel; }
     void SetPosition(const Vector3& pos) { position_ = pos; }
+    void SetRotation(const Vector3& rot) { rotation_ = rot; }
 
     // === Combat ===
     void Shoot();

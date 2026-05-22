@@ -40,10 +40,24 @@ bool Game::Initialize(int screenWidth, int screenHeight, const std::string& titl
     screenHeight_ = screenHeight;
 
     // Initialize Raylib window with flags
+#if defined(PLATFORM_ANDROID)
+    SetConfigFlags(FLAG_MSAA_4X_HINT);
+#else
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
+#endif
     InitWindow(screenWidth_, screenHeight_, title.c_str());
+
+#if !defined(PLATFORM_ANDROID)
     SetWindowMinSize(800, 600);
-    SetTargetFPS(144);
+#endif
+
+    // On Android, get actual screen size after InitWindow
+#if defined(PLATFORM_ANDROID)
+    screenWidth_ = GetScreenWidth();
+    screenHeight_ = GetScreenHeight();
+#endif
+
+    SetTargetFPS(60);
 
     // Initialize audio device
     InitAudioDevice();
@@ -162,20 +176,27 @@ void Game::SetState(GameState newState) {
     // Handle state entry logic
     switch (currentState_) {
     case GameState::MENU:
-        DisableCursor(); // Will be re-enabled by menu
+#if !defined(PLATFORM_ANDROID)
         EnableCursor();
+#endif
         break;
 
     case GameState::PLAYING:
+#if !defined(PLATFORM_ANDROID)
         DisableCursor(); // First-person camera needs cursor locked
+#endif
         break;
 
     case GameState::PAUSED:
+#if !defined(PLATFORM_ANDROID)
         EnableCursor();
+#endif
         break;
 
     case GameState::GAME_OVER:
+#if !defined(PLATFORM_ANDROID)
         EnableCursor();
+#endif
         break;
 
     default:
@@ -296,7 +317,12 @@ void Game::UpdatePlaying(float deltaTime) {
 
     // Update local player input and movement
     if (localPlayer_) {
+#if defined(PLATFORM_ANDROID)
+        HandleTouchInput(deltaTime);
         localPlayer_->Update(deltaTime);
+#else
+        localPlayer_->Update(deltaTime);
+#endif
         cameraController_->FollowPlayer(localPlayer_, deltaTime);
 
         // Handle player shooting
@@ -480,10 +506,58 @@ void Game::RenderPlaying() {
 
     // 2D HUD overlay
     RenderDebugInfo();
+
+#if defined(PLATFORM_ANDROID)
+    // Touch controls overlay
+    RenderTouchControls();
+#endif
 }
 
 void Game::RenderMenu() {
-    DrawText("EOS SHOOTER", screenWidth_ / 2 - 200, 100, 60, RED);
+    // Background
+    DrawRectangle(0, 0, screenWidth_, screenHeight_, Fade(BLACK, 0.85f));
+
+    // Title
+    DrawText("EOS SHOOTER", screenWidth_ / 2 - MeasureText("EOS SHOOTER", 60) / 2, 80, 60, RED);
+    DrawText("Multiplayer FPS", screenWidth_ / 2 - MeasureText("Multiplayer FPS", 24) / 2, 150, 24, GRAY);
+
+#if defined(PLATFORM_ANDROID)
+    // Touch-friendly buttons for Android
+    int btnW = 400;
+    int btnH = 60;
+    int btnX = screenWidth_ / 2 - btnW / 2;
+
+    // "Start Game" button
+    Rectangle startBtn = { (float)btnX, 250.0f, (float)btnW, (float)btnH };
+    bool startHover = CheckCollisionPointRec(GetTouchPosition(0), startBtn) || CheckCollisionPointRec(GetMousePosition(), startBtn);
+    DrawRectangleRec(startBtn, startHover ? DARKGREEN : GREEN);
+    DrawRectangleLinesEx(startBtn, 2, WHITE);
+    DrawText("TAP TO START GAME", btnX + MeasureText("TAP TO START GAME", 24) / 2, 262, 24, WHITE);
+
+    // "Multiplayer" button
+    Rectangle lobbyBtn = { (float)btnX, 330.0f, (float)btnW, (float)btnH };
+    bool lobbyHover = CheckCollisionPointRec(GetTouchPosition(0), lobbyBtn) || CheckCollisionPointRec(GetMousePosition(), lobbyBtn);
+    DrawRectangleRec(lobbyBtn, lobbyHover ? DARKPURPLE : PURPLE);
+    DrawRectangleLinesEx(lobbyBtn, 2, WHITE);
+    DrawText("MULTIPLAYER LOBBY", btnX + MeasureText("MULTIPLAYER LOBBY", 24) / 2, 342, 24, WHITE);
+
+    // Check touch/click for start
+    if ((IsKeyPressed(KEY_ENTER)) ||
+        (GetGestureDetected() == GESTURE_TAP && startHover) ||
+        (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && startHover)) {
+        GameConfig config;
+        config.mode = GameMode::COOP_SURVIVAL;
+        config.mapName = "urban_warehouse";
+        StartGame(config);
+    }
+
+    // Check touch/click for lobby
+    if ((IsKeyPressed(KEY_L)) ||
+        (GetGestureDetected() == GESTURE_TAP && lobbyHover) ||
+        (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && lobbyHover)) {
+        SetState(GameState::LOBBY);
+    }
+#else
     DrawText("Press ENTER to Start", screenWidth_ / 2 - 140, 300, 30, WHITE);
     DrawText("Press L for Multiplayer Lobby", screenWidth_ / 2 - 200, 350, 30, WHITE);
 
@@ -496,6 +570,7 @@ void Game::RenderMenu() {
     if (IsKeyPressed(KEY_L)) {
         SetState(GameState::LOBBY);
     }
+#endif
 }
 
 void Game::RenderLobby() {
@@ -553,8 +628,28 @@ void Game::RenderGameOver() {
 
     DrawText("Press ENTER to Play Again | ESC for Menu", screenWidth_ / 2 - 260, screenHeight_ - 80, 22, GRAY);
 
+#if defined(PLATFORM_ANDROID)
+    // Touch buttons for Game Over
+    Rectangle retryBtn = { (float)(screenWidth_ / 2 - 200), (float)(screenHeight_ - 120), 180.0f, 50.0f };
+    Rectangle menuBtn = { (float)(screenWidth_ / 2 + 20), (float)(screenHeight_ - 120), 180.0f, 50.0f };
+
+    DrawRectangleRec(retryBtn, DARKGREEN);
+    DrawText("PLAY AGAIN", (int)retryBtn.x + 20, (int)retryBtn.y + 14, 20, WHITE);
+    DrawRectangleRec(menuBtn, DARKGRAY);
+    DrawText("MENU", (int)menuBtn.x + 55, (int)menuBtn.y + 14, 20, WHITE);
+
+    if (IsKeyPressed(KEY_ENTER) ||
+        (GetGestureDetected() == GESTURE_TAP && CheckCollisionPointRec(GetTouchPosition(0), retryBtn))) {
+        RestartGame();
+    }
+    if (IsKeyPressed(KEY_ESCAPE) ||
+        (GetGestureDetected() == GESTURE_TAP && CheckCollisionPointRec(GetTouchPosition(0), menuBtn))) {
+        SetState(GameState::MENU);
+    }
+#else
     if (IsKeyPressed(KEY_ENTER)) RestartGame();
     if (IsKeyPressed(KEY_ESCAPE)) SetState(GameState::MENU);
+#endif
 }
 
 void Game::RenderSpectating() {
@@ -888,5 +983,192 @@ void Game::OnPlayerHit(uint64_t playerId, float damage, uint64_t attackerId) {
         cameraController_->AddShake(damage * 0.01f);
     }
 }
+
+// ============================================================================
+// Android Touch Controls
+// ============================================================================
+
+#if defined(PLATFORM_ANDROID)
+void Game::HandleTouchInput(float deltaTime) {
+    if (!localPlayer_ || localPlayer_->IsDead()) return;
+
+    int touchCount = GetTouchPointCount();
+
+    // Reset per-frame state
+    joystickDir_ = {0, 0};
+    isShootingTouch_ = false;
+    touchLookX_ = 0.0f;
+    touchLookY_ = 0.0f;
+
+    float joystickRadius = 80.0f;
+    float joystickZoneLeft = screenWidth_ * 0.35f;  // Left 35% for joystick
+    float shootZoneRight = screenWidth_ * 0.85f;    // Right 15% for shoot button
+
+    for (int i = 0; i < touchCount; i++) {
+        Vector2 pos = GetTouchPosition(i);
+
+        if (pos.x < joystickZoneLeft) {
+            // Left side: virtual joystick
+            if (!joystickActive_) {
+                joystickOrigin_ = pos;
+                joystickActive_ = true;
+                joystickTouchId_ = i;
+            }
+            if (i == joystickTouchId_) {
+                float dx = pos.x - joystickOrigin_.x;
+                float dy = pos.y - joystickOrigin_.y;
+                float dist = sqrtf(dx * dx + dy * dy);
+                if (dist > 0.01f) {
+                    joystickDir_.x = dx / joystickRadius;
+                    joystickDir_.y = dy / joystickRadius;
+                    if (dist > joystickRadius) {
+                        joystickDir_.x = dx / dist;
+                        joystickDir_.y = dy / dist;
+                    }
+                }
+            }
+        } else if (pos.x > shootZoneRight && pos.y > screenHeight_ * 0.5f) {
+            // Right side bottom: shoot button
+            isShootingTouch_ = true;
+        } else if (pos.x > joystickZoneLeft && pos.x <= shootZoneRight) {
+            // Middle area: look control
+            if (lookTouchId_ < 0) {
+                lookTouchId_ = i;
+                lastLookPos_ = pos;
+            }
+            if (i == lookTouchId_) {
+                touchLookX_ = (pos.x - lastLookPos_.x) * 0.005f;
+                touchLookY_ = (pos.y - lastLookPos_.y) * 0.005f;
+                lastLookPos_ = pos;
+            }
+        }
+    }
+
+    if (touchCount == 0) {
+        joystickActive_ = false;
+        joystickTouchId_ = -1;
+        lookTouchId_ = -1;
+    }
+
+    // Apply joystick to player movement
+    Vector3 moveDir = {joystickDir_.x, 0, joystickDir_.y};
+    if (moveDir.x != 0 || moveDir.z != 0) {
+        float sinYaw = sinf(localPlayer_->GetRotation().y);
+        float cosYaw = cosf(localPlayer_->GetRotation().y);
+        Vector3 rotatedDir = {
+            moveDir.x * cosYaw - moveDir.z * sinYaw,
+            0,
+            moveDir.x * sinYaw + moveDir.z * cosYaw
+        };
+        localPlayer_->Move(rotatedDir, deltaTime);
+    } else {
+        localPlayer_->SetVelocity({0, localPlayer_->GetVelocity().y, 0});
+    }
+
+    // Apply look rotation
+    if (touchLookX_ != 0 || touchLookY_ != 0) {
+        Vector3 rot = localPlayer_->GetRotation();
+        rot.y -= touchLookX_;
+        rot.x -= touchLookY_;
+        rot.x = std::clamp(rot.x, -1.5f, 1.5f);
+        localPlayer_->SetRotation(rot);
+    }
+
+    // Shooting
+    if (isShootingTouch_) {
+        localPlayer_->Shoot();
+    } else {
+        localPlayer_->StopShooting();
+    }
+
+    // Reload: double tap right side
+    static float lastTapTime = 0;
+    static Vector2 lastTapPos = {0, 0};
+    for (int i = 0; i < touchCount; i++) {
+        Vector2 pos = GetTouchPosition(i);
+        if (GetGestureDetected() == GESTURE_DOUBLETAP) {
+            localPlayer_->Reload();
+        }
+    }
+}
+
+void Game::RenderTouchControls() {
+    // === Left Virtual Joystick ===
+    float joystickRadius = 80.0f;
+    Vector2 joyCenter = {150.0f, screenHeight_ - 150.0f};
+
+    // Joystick base
+    DrawCircleV(joyCenter, joystickRadius, Fade(GRAY, 0.3f));
+    DrawCircleLines((int)joyCenter.x, (int)joyCenter.y, (int)joystickRadius, Fade(WHITE, 0.5f));
+
+    // Joystick thumb
+    if (joystickActive_) {
+        Vector2 thumbPos = {
+            joyCenter.x + joystickDir_.x * joystickRadius * 0.7f,
+            joyCenter.y + joystickDir_.y * joystickRadius * 0.7f
+        };
+        DrawCircleV(thumbPos, 25, Fade(WHITE, 0.6f));
+    } else {
+        DrawCircleV(joyCenter, 25, Fade(WHITE, 0.3f));
+    }
+
+    // === Right Side: Shoot Button ===
+    Vector2 shootCenter = {screenWidth_ - 120.0f, screenHeight_ - 150.0f};
+    float shootRadius = 55.0f;
+    DrawCircleV(shootCenter, shootRadius, isShootingTouch_ ? Fade(RED, 0.6f) : Fade(RED, 0.3f));
+    DrawCircleLines((int)shootCenter.x, (int)shootCenter.y, (int)shootRadius, Fade(WHITE, 0.5f));
+    DrawText("FIRE", (int)shootCenter.x - MeasureText("FIRE", 16) / 2, (int)shootCenter.y - 8, 16, WHITE);
+
+    // === Reload Button ===
+    Vector2 reloadCenter = {screenWidth_ - 120.0f, screenHeight_ - 280.0f};
+    float reloadRadius = 35.0f;
+    DrawCircleV(reloadCenter, reloadRadius, Fade(BLUE, 0.3f));
+    DrawCircleLines((int)reloadCenter.x, (int)reloadCenter.y, (int)reloadRadius, Fade(WHITE, 0.5f));
+    DrawText("R", (int)reloadCenter.x - 5, (int)reloadCenter.y - 8, 16, WHITE);
+
+    // Check reload touch
+    for (int i = 0; i < GetTouchPointCount(); i++) {
+        Vector2 pos = GetTouchPosition(i);
+        float dx = pos.x - reloadCenter.x;
+        float dy = pos.y - reloadCenter.y;
+        if (dx * dx + dy * dy < reloadRadius * reloadRadius) {
+            localPlayer_->Reload();
+        }
+    }
+
+    // === Jump Button ===
+    Vector2 jumpCenter = {screenWidth_ - 220.0f, screenHeight_ - 200.0f};
+    float jumpRadius = 30.0f;
+    DrawCircleV(jumpCenter, jumpRadius, Fade(GREEN, 0.3f));
+    DrawCircleLines((int)jumpCenter.x, (int)jumpCenter.y, (int)jumpRadius, Fade(WHITE, 0.5f));
+    DrawText("J", (int)jumpCenter.x - 4, (int)jumpCenter.y - 8, 16, WHITE);
+
+    // Check jump touch
+    for (int i = 0; i < GetTouchPointCount(); i++) {
+        Vector2 pos = GetTouchPosition(i);
+        float dx = pos.x - jumpCenter.x;
+        float dy = pos.y - jumpCenter.y;
+        if (dx * dx + dy * dy < jumpRadius * jumpRadius) {
+            localPlayer_->Jump();
+        }
+    }
+
+    // === Weapon Switch ===
+    for (int w = 0; w < 3; w++) {
+        Vector2 wCenter = {screenWidth_ - 60.0f - w * 55.0f, 60.0f};
+        DrawCircleV(wCenter, 22, (localPlayer_->GetCurrentWeapon() && w == 0) ? Fade(YELLOW, 0.5f) : Fade(GRAY, 0.3f));
+        DrawText(TextFormat("%d", w + 1), (int)wCenter.x - 4, (int)wCenter.y - 8, 16, WHITE);
+
+        for (int i = 0; i < GetTouchPointCount(); i++) {
+            Vector2 pos = GetTouchPosition(i);
+            float dx = pos.x - wCenter.x;
+            float dy = pos.y - wCenter.y;
+            if (dx * dx + dy * dy < 22 * 22) {
+                localPlayer_->SwitchWeapon(w);
+            }
+        }
+    }
+}
+#endif
 
 } // namespace EOSShooter

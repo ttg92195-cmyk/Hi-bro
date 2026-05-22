@@ -41,7 +41,9 @@ void Player::Update(float deltaTime) {
     }
 
     if (isLocal_) {
+#if !defined(PLATFORM_ANDROID)
         HandleInput(deltaTime);
+#endif
     } else {
         InterpolatePosition(deltaTime);
         InterpolateRotation(deltaTime);

@@ -155,6 +155,8 @@ private:
     void RenderGameOver();
     void RenderSpectating();
     void RenderDebugInfo();
+    void RenderTouchControls(); // Android touch overlay
+    void HandleTouchInput(float deltaTime); // Android touch input
 
     // === Collision ===
     void CheckBulletCollisions();
@@ -212,6 +214,20 @@ private:
     // === Scoring ===
     std::vector<ScoreEntry> leaderboard_;
     std::unordered_map<uint64_t, ScoreEntry*> scoreMap_;
+
+    // === Touch Controls (Android) ===
+#if defined(PLATFORM_ANDROID)
+    Vector2 joystickOrigin_ = {0, 0};    // Left joystick center
+    Vector2 joystickDir_ = {0, 0};       // Left joystick direction
+    bool joystickActive_ = false;
+    int joystickTouchId_ = -1;
+    bool isShootingTouch_ = false;
+    int shootTouchId_ = -1;
+    float touchLookX_ = 0.0f;
+    float touchLookY_ = 0.0f;
+    int lookTouchId_ = -1;
+    Vector2 lastLookPos_ = {0, 0};
+#endif
 
     // === Screen ===
     int screenWidth_ = 1280;
