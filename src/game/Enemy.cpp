@@ -124,40 +124,205 @@ void Enemy::Update(float deltaTime, Player* player) {
 void Enemy::Render() {
     if (aiState_ == AIState::DEAD) return;
 
+    // === Colors per enemy class with sci-fi theme ===
     Color bodyColor;
+    Color accentColor;
+    Color eyeColor = {255, 0, 0, 255}; // Glowing red eyes
+    float height = 1.8f;
+    float bodyWidth = 0.4f;
+
     switch (enemyClass_) {
-    case EnemyClass::GRUNT:     bodyColor = DARKGREEN; break;
-    case EnemyClass::HEAVY:     bodyColor = DARKGRAY; break;
-    case EnemyClass::SNIPER:    bodyColor = MAROON; break;
-    case EnemyClass::SHOTGUNNER: bodyColor = BROWN; break;
-    case EnemyClass::ROCKETEER: bodyColor = ORANGE; break;
-    default: bodyColor = DARKGREEN; break;
+    case EnemyClass::GRUNT:
+        bodyColor = (Color){40, 100, 40, 255};        // Military green
+        accentColor = (Color){80, 200, 80, 255};      // Bright green accent
+        break;
+    case EnemyClass::HEAVY:
+        bodyColor = (Color){80, 80, 90, 255};         // Dark steel
+        accentColor = (Color){255, 160, 0, 255};      // Orange accent
+        height = 2.0f;
+        bodyWidth = 0.55f;
+        break;
+    case EnemyClass::SNIPER:
+        bodyColor = (Color){100, 30, 40, 255};        // Dark maroon
+        accentColor = (Color){255, 80, 120, 255};     // Pink accent
+        height = 1.9f;
+        bodyWidth = 0.35f;
+        break;
+    case EnemyClass::SHOTGUNNER:
+        bodyColor = (Color){120, 70, 30, 255};        // Brown/tan
+        accentColor = (Color){255, 200, 0, 255};      // Yellow accent
+        break;
+    case EnemyClass::ROCKETEER:
+        bodyColor = (Color){140, 60, 20, 255};        // Dark orange
+        accentColor = (Color){255, 60, 60, 255};      // Red accent
+        height = 1.85f;
+        bodyWidth = 0.45f;
+        break;
+    default:
+        bodyColor = DARKGREEN;
+        accentColor = GREEN;
+        break;
     }
 
-    // Body
-    float height = (enemyClass_ == EnemyClass::HEAVY) ? 2.0f : 1.8f;
-    DrawCapsule(position_, {position_.x, position_.y + height, position_.z},
-                0.4f, 8, 8, bodyColor);
+    // === Torso ===
+    float torsoTop = position_.y + height * 0.95f;
+    float torsoBot = position_.y + height * 0.45f;
+    DrawCapsule(
+        {position_.x, torsoBot, position_.z},
+        {position_.x, torsoTop, position_.z},
+        bodyWidth, 8, 8, bodyColor);
 
-    // Head
-    DrawSphere({position_.x, position_.y + height + 0.2f, position_.z}, 0.25f, SKYBLUE);
+    // === Accent stripe on torso (chest plate) ===
+    float chestY = position_.y + height * 0.75f;
+    DrawSphere({position_.x, chestY, position_.z}, bodyWidth * 0.5f, Fade(accentColor, 0.3f));
 
-    // Health bar above head (using 3D lines)
-    float healthPercent = health_ / maxHealth_;
-    Vector3 barStart = {position_.x - 0.5f, position_.y + height + 0.6f, position_.z};
-    Vector3 barEnd = {position_.x + 0.5f, position_.y + height + 0.6f, position_.z};
-    Vector3 healthEnd = {position_.x - 0.5f + healthPercent, position_.y + height + 0.6f, position_.z};
-    Color hpColor = (healthPercent > 0.5f) ? GREEN : (healthPercent > 0.25f) ? YELLOW : RED;
-    DrawLine3D(barStart, healthEnd, hpColor);
-    DrawLine3D(barStart, barEnd, DARKGRAY);
+    // === Legs ===
+    float legTop = position_.y + height * 0.45f;
+    float legBot = position_.y + 0.05f;
+    float legRadius = bodyWidth * 0.35f;
+    float legSpread = bodyWidth * 0.5f;
 
-    // Weapon visual
-    Vector3 weaponOffset = {
-        position_.x + sinf(rotation_.y) * 0.5f,
-        position_.y + height * 0.7f,
-        position_.z + cosf(rotation_.y) * 0.5f
+    float sinR = sinf(rotation_.y + PI * 0.5f);
+    float cosR = cosf(rotation_.y + PI * 0.5f);
+
+    // Left leg
+    DrawCapsule(
+        {position_.x + sinR * legSpread, legTop, position_.z + cosR * legSpread},
+        {position_.x + sinR * legSpread, legBot, position_.z + cosR * legSpread},
+        legRadius, 6, 6, bodyColor);
+    // Right leg
+    DrawCapsule(
+        {position_.x - sinR * legSpread, legTop, position_.z - cosR * legSpread},
+        {position_.x - sinR * legSpread, legBot, position_.z - cosR * legSpread},
+        legRadius, 6, 6, bodyColor);
+
+    // === Head ===
+    float headY = position_.y + height + 0.15f;
+    float headRadius = (enemyClass_ == EnemyClass::HEAVY) ? 0.28f : 0.22f;
+    DrawSphere({position_.x, headY, position_.z}, headRadius, (Color){60, 60, 70, 255});
+
+    // === Glowing Red Eyes ===
+    float eyeFwd = headRadius * 0.7f;
+    float fwdX = sinf(rotation_.y) * eyeFwd;
+    float fwdZ = cosf(rotation_.y) * eyeFwd;
+    float eyeSpread = headRadius * 0.35f;
+    float eyeY = headY + 0.02f;
+
+    // Pulsing glow
+    float eyePulse = sinf(GetTime() * 5.0f + uniqueId_) * 0.2f + 0.8f;
+
+    // Left eye
+    Vector3 leftEyePos = {
+        position_.x + fwdX + sinR * eyeSpread,
+        eyeY,
+        position_.z + fwdZ + cosR * eyeSpread
     };
-    DrawCube(weaponOffset, 0.06f, 0.06f, 0.4f, DARKGRAY);
+    DrawSphere(leftEyePos, 0.04f, eyeColor);
+    DrawSphere(leftEyePos, 0.07f, Fade(eyeColor, 0.2f * eyePulse));
+
+    // Right eye
+    Vector3 rightEyePos = {
+        position_.x + fwdX - sinR * eyeSpread,
+        eyeY,
+        position_.z + fwdZ - cosR * eyeSpread
+    };
+    DrawSphere(rightEyePos, 0.04f, eyeColor);
+    DrawSphere(rightEyePos, 0.07f, Fade(eyeColor, 0.2f * eyePulse));
+
+    // === Health Bar (proper background + fill + border) ===
+    float healthPercent = health_ / maxHealth_;
+    float barY = headY + headRadius + 0.3f;
+    float barWidth = 0.8f;
+    float barHeight = 0.06f;
+
+    // Background bar (full width, dark)
+    Vector3 barBgStart = {position_.x - barWidth * 0.5f, barY - barHeight, position_.z};
+    Vector3 barBgEnd = {position_.x + barWidth * 0.5f, barY - barHeight, position_.z};
+    DrawLine3D(barBgStart, barBgEnd, Fade(DARKGRAY, 0.9f));
+
+    // Fill bar
+    Color hpColor;
+    if (healthPercent > 0.5f) {
+        hpColor = (Color){0, 220, 80, 255};
+    } else if (healthPercent > 0.25f) {
+        hpColor = (Color){255, 200, 0, 255};
+    } else {
+        float hpPulse = sinf(GetTime() * 6.0f) * 0.3f + 0.7f;
+        hpColor = (Color){255, (uint8_t)(50 * hpPulse), 0, 255};
+    }
+    Vector3 barFillEnd = {
+        position_.x - barWidth * 0.5f + barWidth * healthPercent,
+        barY - barHeight,
+        position_.z
+    };
+    DrawLine3D(barBgStart, barFillEnd, hpColor);
+
+    // Border lines (top and bottom of health bar)
+    DrawLine3D({barBgStart.x, barY, barBgStart.z}, {barBgEnd.x, barY, barBgEnd.z}, Fade((Color){100, 100, 100, 255}, 0.5f));
+    DrawLine3D({barBgStart.x, barY - barHeight * 2, barBgStart.z}, {barBgEnd.x, barY - barHeight * 2, barBgEnd.z}, Fade((Color){100, 100, 100, 255}, 0.5f));
+
+    // === Weapon Visual with glow for special enemies ===
+    float wepFwd = 0.5f;
+    Vector3 weaponOffset = {
+        position_.x + sinf(rotation_.y) * wepFwd,
+        position_.y + height * 0.7f,
+        position_.z + cosf(rotation_.y) * wepFwd
+    };
+
+    Color weaponColor = (Color){50, 50, 55, 255};
+    float weaponLen = 0.4f;
+    float weaponW = 0.06f;
+
+    switch (enemyClass_) {
+    case EnemyClass::HEAVY:
+        weaponLen = 0.6f;
+        weaponW = 0.1f;
+        weaponColor = (Color){70, 70, 80, 255};
+        break;
+    case EnemyClass::SNIPER:
+        weaponLen = 0.7f;
+        weaponW = 0.04f;
+        weaponColor = (Color){40, 50, 60, 255};
+        break;
+    case EnemyClass::SHOTGUNNER:
+        weaponLen = 0.45f;
+        weaponW = 0.1f;
+        weaponColor = (Color){90, 60, 30, 255};
+        break;
+    case EnemyClass::ROCKETEER:
+        weaponLen = 0.6f;
+        weaponW = 0.12f;
+        weaponColor = (Color){80, 40, 30, 255};
+        break;
+    default:
+        break;
+    }
+
+    DrawCube(weaponOffset, weaponW, weaponW, weaponLen, weaponColor);
+
+    // Weapon glow for special enemies
+    if (enemyClass_ == EnemyClass::ROCKETEER) {
+        DrawSphere(weaponOffset, weaponW * 2.0f, Fade((Color){255, 60, 0, 255}, 0.08f));
+    } else if (enemyClass_ == EnemyClass::SNIPER) {
+        // Laser sight dot
+        float laserLen = 2.0f;
+        Vector3 laserEnd = {
+            position_.x + sinf(rotation_.y) * (wepFwd + laserLen),
+            position_.y + height * 0.7f,
+            position_.z + cosf(rotation_.y) * (wepFwd + laserLen)
+        };
+        DrawLine3D(weaponOffset, laserEnd, Fade((Color){255, 0, 0, 255}, 0.15f));
+    } else if (enemyClass_ == EnemyClass::HEAVY) {
+        // Muzzle glow hint
+        DrawSphere(weaponOffset, weaponW * 1.5f, Fade(accentColor, 0.06f));
+    }
+
+    // === Alert indicator when in CHASE/ATTACK state ===
+    if (aiState_ == AIState::CHASE || aiState_ == AIState::ATTACK) {
+        float alertY = barY + 0.15f;
+        float alertPulse = sinf(GetTime() * 8.0f) * 0.3f + 0.7f;
+        DrawSphere({position_.x, alertY, position_.z}, 0.03f, Fade((Color){255, 50, 50, 255}, alertPulse));
+    }
 }
 
 void Enemy::TakeDamage(float damage, uint64_t attackerId) {

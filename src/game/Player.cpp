@@ -61,36 +61,127 @@ void Player::Update(float deltaTime) {
 void Player::Render() {
     if (isDead_) return;
 
-    // Draw player body as a simple capsule/cylinder
     Vector3 pos = position_;
     float height = isCrouching_ ? modelHeight_ * 0.6f : modelHeight_;
-    Color color = isLocal_ ? playerColor_ :
+    Color bodyColor = isLocal_ ? playerColor_ :
                   (teamId_ == TeamId::TEAM_ALPHA ? BLUE : RED);
 
-    // Body
+    // === Torso (upper body) ===
+    float torsoTop = pos.y + height * 0.95f;
+    float torsoBot = pos.y + height * 0.45f;
+    float torsoRadius = modelRadius_ * 0.95f;
     DrawCapsule(
-        {pos.x, pos.y, pos.z},
-        {pos.x, pos.y + height, pos.z},
-        modelRadius_, 8, 8, color);
+        {pos.x, torsoBot, pos.z},
+        {pos.x, torsoTop, pos.z},
+        torsoRadius, 8, 8, bodyColor);
 
-    // Head
-    DrawSphere({pos.x, pos.y + height + 0.2f, pos.z}, 0.25f, SKYBLUE);
+    // === Legs (lower body) ===
+    float legTop = pos.y + height * 0.45f;
+    float legBot = pos.y + 0.05f;
+    float legRadius = modelRadius_ * 0.35f;
+    float legSpread = modelRadius_ * 0.45f;
 
-    // Name tag (above head)
-    if (!isLocal_) {
-        // Draw name tag above head using 2D text
-        // TODO: Implement proper 3D name tag with GetWorldToScreen
+    // Left leg
+    float sinR = sinf(rotation_.y + PI * 0.5f);
+    float cosR = cosf(rotation_.y + PI * 0.5f);
+    DrawCapsule(
+        {pos.x + sinR * legSpread, legTop, pos.z + cosR * legSpread},
+        {pos.x + sinR * legSpread, legBot, pos.z + cosR * legSpread},
+        legRadius, 6, 6, bodyColor);
+
+    // Right leg
+    DrawCapsule(
+        {pos.x - sinR * legSpread, legTop, pos.z - cosR * legSpread},
+        {pos.x - sinR * legSpread, legBot, pos.z - cosR * legSpread},
+        legRadius, 6, 6, bodyColor);
+
+    // === Head ===
+    float headY = pos.y + height + 0.15f;
+    float headRadius = 0.22f;
+    DrawSphere({pos.x, headY, pos.z}, headRadius, (Color){200, 200, 210, 255});
+
+    // === Visor (helmet face shield) ===
+    float visorFwd = 0.12f;
+    float fwdX = sinf(rotation_.y) * visorFwd;
+    float fwdZ = cosf(rotation_.y) * visorFwd;
+    // Visor - cyan tinted glass
+    DrawSphere({pos.x + fwdX, headY - 0.02f, pos.z + fwdZ}, headRadius * 0.7f,
+               (Color){0, 180, 220, 180});
+
+    // === Team Color Indicator (shoulder pads) ===
+    Color teamColor;
+    if (teamId_ == TeamId::TEAM_ALPHA) {
+        teamColor = (Color){60, 120, 255, 255};
+    } else if (teamId_ == TeamId::TEAM_BRAVO) {
+        teamColor = (Color){255, 60, 60, 255};
+    } else {
+        teamColor = (Color){0, 200, 200, 255};
     }
 
-    // Weapon visual
+    // Left shoulder pad
+    float shoulderY = pos.y + height * 0.85f;
+    DrawSphere({pos.x + sinR * (torsoRadius + 0.08f), shoulderY, pos.z + cosR * (torsoRadius + 0.08f)},
+               0.1f, teamColor);
+    // Right shoulder pad
+    DrawSphere({pos.x - sinR * (torsoRadius + 0.08f), shoulderY, pos.z - cosR * (torsoRadius + 0.08f)},
+               0.1f, teamColor);
+
+    // === Name tag (above head) ===
+    if (!isLocal_) {
+        // Name tag drawn as a 3D text indicator
+        // Simple 3D position above head - will need proper screen projection from Game
+        // For now, use a floating health bar style indicator
+        float barY = headY + headRadius + 0.2f;
+        float barWidth = 0.6f;
+        float healthPct = health_ / maxHealth_;
+        Color hpBarColor = (healthPct > 0.5f) ? (Color){0, 220, 80, 255} :
+                          (healthPct > 0.25f) ? (Color){255, 200, 0, 255} :
+                          (Color){255, 50, 50, 255};
+
+        // Health bar background
+        DrawLine3D({pos.x - barWidth * 0.5f, barY, pos.z},
+                   {pos.x + barWidth * 0.5f, barY, pos.z}, Fade(DARKGRAY, 0.8f));
+        // Health bar fill
+        DrawLine3D({pos.x - barWidth * 0.5f, barY, pos.z},
+                   {pos.x - barWidth * 0.5f + barWidth * healthPct, barY, pos.z}, hpBarColor);
+
+        // Team indicator dot above health bar
+        DrawSphere({pos.x, barY + 0.12f, pos.z}, 0.04f, teamColor);
+    }
+
+    // === Weapon visual ===
     Weapon* weapon = GetCurrentWeapon();
     if (weapon) {
+        float wepFwd = 0.6f;
+        float wepX = sinf(rotation_.y) * wepFwd;
+        float wepZ = cosf(rotation_.y) * wepFwd;
         Vector3 weaponOffset = {
-            pos.x + sinf(rotation_.y) * 0.5f,
+            pos.x + wepX,
             pos.y + height * 0.7f,
-            pos.z + cosf(rotation_.y) * 0.5f
+            pos.z + wepZ
         };
-        DrawCube(weaponOffset, 0.08f, 0.08f, 0.5f, DARKGRAY);
+
+        Color weaponColor = DARKGRAY;
+        // Weapon glow based on type
+        switch (weapon->GetType()) {
+        case WeaponType::SHOTGUN:       weaponColor = (Color){120, 80, 40, 255}; break;
+        case WeaponType::SNIPER_RIFLE:  weaponColor = (Color){50, 70, 90, 255}; break;
+        case WeaponType::RPG:           weaponColor = (Color){80, 60, 40, 255}; break;
+        default: break;
+        }
+
+        DrawCube(weaponOffset, 0.08f, 0.08f, 0.5f, weaponColor);
+
+        // Weapon muzzle glow
+        float muzzleFwd = wepFwd + 0.3f;
+        Vector3 muzzlePos = {
+            pos.x + sinf(rotation_.y) * muzzleFwd,
+            pos.y + height * 0.7f,
+            pos.z + cosf(rotation_.y) * muzzleFwd
+        };
+        if (isShooting_) {
+            DrawSphere(muzzlePos, 0.06f, Fade((Color){255, 200, 50, 255}, 0.5f));
+        }
     }
 }
 

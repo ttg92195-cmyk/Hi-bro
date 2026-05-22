@@ -57,7 +57,26 @@ void ParticleSystem::Render() const {
         float size = p.startSize + (p.endSize - p.startSize) * t;
 
         if (size > 0.005f) {
+            // Glow effect: draw larger faded sphere behind the main particle
+            // This creates a soft halo/glow around bright particles
+            float glowAlpha = 0.15f * (1.0f - t); // Fade glow as particle ages
+            if (glowAlpha > 0.01f) {
+                Color glowColor = {
+                    color.r,
+                    color.g,
+                    color.b,
+                    (uint8_t)(glowAlpha * 255 > 255 ? 255 : glowAlpha * 255)
+                };
+                DrawSphere(p.position, size * 2.5f, Fade(glowColor, 0.12f));
+            }
+
+            // Main particle
             DrawSphere(p.position, size, color);
+
+            // Extra bright core for energetic particles (muzzle flash, sparks, fire)
+            if (size > 0.03f && (color.r > 200 || color.g > 200)) {
+                DrawSphere(p.position, size * 0.5f, Fade(WHITE, 0.3f * (1.0f - t)));
+            }
         }
     }
 }

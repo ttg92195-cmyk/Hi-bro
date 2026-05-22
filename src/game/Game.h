@@ -155,6 +155,8 @@ private:
     void RenderGameOver();
     void RenderSpectating();
     void RenderDebugInfo();
+    void RenderHUD();
+    void RenderCrosshair();
     void RenderTouchControls(); // Android touch overlay
     void HandleTouchInput(float deltaTime); // Android touch input
 
@@ -232,6 +234,13 @@ private:
     // === Screen ===
     int screenWidth_ = 1280;
     int screenHeight_ = 720;
+
+    // === Visual Effects ===
+    float menuAnimTime_ = 0.0f;
+    float screenFade_ = 1.0f;
+    float crosshairSpread_ = 0.0f;
+    float hitMarkerTime_ = 0.0f;
+    bool showHitMarker_ = false;
 };
 
 } // namespace EOSShooter
