@@ -182,6 +182,10 @@ if(ANDROID)
         android
         log
         m
+        EGL
+        GLESv2
+        GLESv3
+        OpenSLES
     )
 
     # Copy EOS SDK .so to jniLibs for APK packaging

@@ -11,10 +11,10 @@ import android.view.WindowManager;
  */
 public class GameActivity extends NativeActivity {
 
-    static {
-        // Load native library
-        System.loadLibrary("eos-shooter");
-    }
+    // Note: Do NOT call System.loadLibrary("eos-shooter") here.
+    // NativeActivity automatically loads the library specified in
+    // AndroidManifest.xml via the "android.app.lib_name" meta-data.
+    // Calling System.loadLibrary() again would cause a duplicate load error.
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

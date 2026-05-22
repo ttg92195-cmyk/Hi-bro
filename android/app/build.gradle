@@ -53,6 +53,12 @@ android {
     }
 
     ndkVersion "25.2.9519653"
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
 }
 
 dependencies {

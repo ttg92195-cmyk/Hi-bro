@@ -39,22 +39,18 @@ bool Game::Initialize(int screenWidth, int screenHeight, const std::string& titl
     screenWidth_ = screenWidth;
     screenHeight_ = screenHeight;
 
-    // Initialize Raylib window with flags
 #if defined(PLATFORM_ANDROID)
-    SetConfigFlags(FLAG_MSAA_4X_HINT);
-#else
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
-#endif
-    InitWindow(screenWidth_, screenHeight_, title.c_str());
-
-#if !defined(PLATFORM_ANDROID)
-    SetWindowMinSize(800, 600);
-#endif
-
-    // On Android, get actual screen size after InitWindow
-#if defined(PLATFORM_ANDROID)
+    // On Android, InitWindow() is called from android_main() BEFORE this function.
+    // Calling it again here would crash because the EGL context is already created.
+    // Just get the actual screen dimensions from the already-initialized window.
     screenWidth_ = GetScreenWidth();
     screenHeight_ = GetScreenHeight();
+    TraceLog(LOG_INFO, "Game: Android detected - using existing window (%dx%d)", screenWidth_, screenHeight_);
+#else
+    // On Desktop, InitWindow() is called here for the first time
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
+    InitWindow(screenWidth_, screenHeight_, title.c_str());
+    SetWindowMinSize(800, 600);
 #endif
 
     SetTargetFPS(60);
@@ -154,7 +150,12 @@ void Game::Shutdown() {
     scoreMap_.clear();
 
     CloseAudioDevice();
+
+#if !defined(PLATFORM_ANDROID)
+    // On Android, CloseWindow() is called from android_main() after Run() returns.
+    // Calling it here would double-close and crash.
     CloseWindow();
+#endif
 
     isInitialized_ = false;
     isRunning_ = false;
