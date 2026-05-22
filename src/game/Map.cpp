@@ -238,8 +238,8 @@ void Map::SpawnPickups() {
 // Collision
 // ============================================================================
 
-RayHitInfo Map::Raycast(const Ray& ray, float maxDistance) const {
-    RayHitInfo closestHit = {0};
+RayCollision Map::Raycast(const Ray& ray, float maxDistance) const {
+    RayCollision closestHit = {0};
     closestHit.hit = false;
     closestHit.distance = maxDistance;
 
@@ -261,7 +261,7 @@ RayHitInfo Map::Raycast(const Ray& ray, float maxDistance) const {
             {center.x + length * 0.5f, wall.height, center.z + wall.thickness * 0.5f}
         };
 
-        RayHitInfo hit = GetRayCollisionBox(ray, box);
+        RayCollision hit = GetRayCollisionBox(ray, box);
         if (hit.hit && hit.distance < closestHit.distance) {
             closestHit = hit;
         }
@@ -273,7 +273,7 @@ RayHitInfo Map::Raycast(const Ray& ray, float maxDistance) const {
         if (t > 0 && t < closestHit.distance) {
             closestHit.hit = true;
             closestHit.distance = t;
-            closestHit.position = {
+            closestHit.point = {
                 ray.position.x + ray.direction.x * t,
                 0,
                 ray.position.z + ray.direction.z * t

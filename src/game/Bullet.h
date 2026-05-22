@@ -7,6 +7,7 @@
 #include "raylib.h"
 #include "Weapon.h"
 #include <vector>
+#include <cstdint>
 
 namespace EOSShooter {
 

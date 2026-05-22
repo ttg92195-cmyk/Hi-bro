@@ -5,6 +5,7 @@
 #include "ParticleSystem.h"
 #include <cmath>
 #include <cstdlib>
+#include <cstdint>
 
 namespace EOSShooter {
 

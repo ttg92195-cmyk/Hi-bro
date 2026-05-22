@@ -180,11 +180,13 @@ target_compile_options(eos-shooter PRIVATE
 
 # === Copy assets to build directory ===
 if(NOT ANDROID)
-    add_custom_command(TARGET eos-shooter POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:eos-shooter>/assets
-    )
+    if(EXISTS "${CMAKE_SOURCE_DIR}/assets")
+        add_custom_command(TARGET eos-shooter POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/assets
+            $<TARGET_FILE_DIR:eos-shooter>/assets
+        )
+    endif()
 endif()
 
 # === Install ===
@@ -193,4 +195,6 @@ install(TARGETS eos-shooter
     LIBRARY DESTINATION lib
 )
 
-install(DIRECTORY assets/ DESTINATION share/eos-shooter/assets)
+if(EXISTS "${CMAKE_SOURCE_DIR}/assets")
+    install(DIRECTORY assets/ DESTINATION share/eos-shooter/assets)
+endif()

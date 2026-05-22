@@ -34,9 +34,9 @@ void InputManager::SetupDefaultBindings() {
     bindings_[ActionToKey(InputAction::SHOOT)]          = {InputAction::SHOOT,          -1, -1, MOUSE_BUTTON_LEFT, true};
     bindings_[ActionToKey(InputAction::AIM)]            = {InputAction::AIM,            -1, -1, MOUSE_BUTTON_RIGHT, true};
     bindings_[ActionToKey(InputAction::RELOAD)]         = {InputAction::RELOAD,         KEY_R};
-    bindings_[ActionToKey(InputAction::SWITCH_WEAPON_1)] = {InputAction::SWITCH_WEAPON_1, KEY_1};
-    bindings_[ActionToKey(InputAction::SWITCH_WEAPON_2)] = {InputAction::SWITCH_WEAPON_2, KEY_2};
-    bindings_[ActionToKey(InputAction::SWITCH_WEAPON_3)] = {InputAction::SWITCH_WEAPON_3, KEY_3};
+    bindings_[ActionToKey(InputAction::SWITCH_WEAPON_1)] = {InputAction::SWITCH_WEAPON_1, KEY_ONE};
+    bindings_[ActionToKey(InputAction::SWITCH_WEAPON_2)] = {InputAction::SWITCH_WEAPON_2, KEY_TWO};
+    bindings_[ActionToKey(InputAction::SWITCH_WEAPON_3)] = {InputAction::SWITCH_WEAPON_3, KEY_THREE};
     bindings_[ActionToKey(InputAction::INTERACT)]       = {InputAction::INTERACT,       KEY_E};
     bindings_[ActionToKey(InputAction::MELEE)]          = {InputAction::MELEE,          KEY_V};
     bindings_[ActionToKey(InputAction::GRENADE)]        = {InputAction::GRENADE,        KEY_G};
@@ -87,7 +87,7 @@ float InputManager::GetActionValue(InputAction action) const {
 }
 
 Vector2 InputManager::GetMouseDelta() const {
-    return GetMouseDelta(); // Raylib function
+    return ::GetMouseDelta(); // Call raylib's global GetMouseDelta()
 }
 
 float InputManager::GetMouseScroll() const {

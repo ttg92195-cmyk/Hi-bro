@@ -4,9 +4,6 @@
 // ============================================================================
 
 #include "Game.h"
-#include "../ui/MainMenu.h"
-#include "../ui/LobbyScreen.h"
-#include "../ui/HUDUI.h"
 #include "../utils/Math.h"
 #include <algorithm>
 #include <cmath>
@@ -609,11 +606,11 @@ void Game::CheckBulletCollisions() {
 
         // Check against map geometry
         Ray ray = { bullet.position, bullet.direction };
-        RayHitInfo mapHit = map_->Raycast(ray, bullet.range - bullet.distance);
+        RayCollision mapHit = map_->Raycast(ray, bullet.range - bullet.distance);
 
         if (mapHit.hit) {
             bullet.SetHit(true);
-            particleSystem_->Emit(ParticleEmitterType::SPARK, mapHit.position, {0,1,0}, 8);
+            particleSystem_->Emit(ParticleEmitterType::SPARK, mapHit.point, {0,1,0}, 8);
             continue;
         }
 
@@ -621,7 +618,8 @@ void Game::CheckBulletCollisions() {
         for (auto& enemy : enemies_) {
             if (enemy->IsDead()) continue;
             BoundingBox enemyBox = enemy->GetBoundingBox();
-            if (CheckCollisionRayBox(ray, enemyBox)) {
+            RayCollision enemyHit = GetRayCollisionBox(ray, enemyBox);
+            if (enemyHit.hit) {
                 bullet.SetHit(true);
                 enemy->TakeDamage(bullet.damage, bullet.ownerId);
                 particleSystem_->Emit(ParticleEmitterType::BLOOD, bullet.position, bullet.direction, 10);
@@ -638,10 +636,11 @@ void Game::CheckBulletCollisions() {
         if (config_.mode == GameMode::DEATHMATCH || config_.mode == GameMode::TEAM_DEATHMATCH) {
             for (auto& player : players_) {
                 if (player->GetPlayerId() == bullet.ownerId || player->IsDead()) continue;
-                if (!config_.friendlyFire && player->GetTeamId() == 0) continue;
+                if (!config_.friendlyFire && player->GetTeamId() == TeamId::NONE) continue;
 
                 BoundingBox playerBox = player->GetBoundingBox();
-                if (CheckCollisionRayBox(ray, playerBox)) {
+                RayCollision playerHit = GetRayCollisionBox(ray, playerBox);
+                if (playerHit.hit) {
                     bullet.SetHit(true);
                     player->TakeDamage(bullet.damage);
                     particleSystem_->Emit(ParticleEmitterType::BLOOD, bullet.position, bullet.direction, 10);

@@ -142,12 +142,8 @@ void Enemy::Render() {
     // Head
     DrawSphere({position_.x, position_.y + height + 0.2f, position_.z}, 0.25f, SKYBLUE);
 
-    // Health bar above head
+    // Health bar above head (using 3D lines)
     float healthPercent = health_ / maxHealth_;
-    Vector3 barPos = {position_.x, position_.y + height + 0.7f, position_.z};
-    DrawBillboard({0}, Rectangle{0, 0, 1, 0.1f}, barPos, 1.0f, WHITE); // Simplified
-
-    // Simple health bar using 3D lines
     Vector3 barStart = {position_.x - 0.5f, position_.y + height + 0.6f, position_.z};
     Vector3 barEnd = {position_.x + 0.5f, position_.y + height + 0.6f, position_.z};
     Vector3 healthEnd = {position_.x - 0.5f + healthPercent, position_.y + height + 0.6f, position_.z};

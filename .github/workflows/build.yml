@@ -85,12 +85,10 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease \
-            -PANDROID_NDK=$ANDROID_NDK_HOME \
-            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-            -DPLATFORM_ANDROID=ON
+          ./gradlew assembleRelease
 
       - name: Sign APK
+        continue-on-error: true
         uses: r0adkll/sign-android-release@v1
         id: sign_apk
         with:
