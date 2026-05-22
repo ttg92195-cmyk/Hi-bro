@@ -176,27 +176,9 @@ if(ANDROID)
         ${EOS_SDK_PATH}/Include
     )
 
-    # Android NDK native_app_glue (required for NativeActivity)
-    find_package(android-native-app-glue QUIET CONFIG)
-    if(android-native-app-glue_FOUND)
-        set(NDK_APP_GLUE_LIB android::native_app_glue)
-    else()
-        # Fallback: build from NDK sources (older NDK versions)
-        set(NDK_NATIVE_APP_GLUE "${ANDROID_NDK}/sources/android/native_app_glue")
-        if(EXISTS "${NDK_NATIVE_APP_GLUE}/android_native_app_glue.c")
-            add_library(ndk_native_app_glue STATIC ${NDK_NATIVE_APP_GLUE}/android_native_app_glue.c)
-            target_include_directories(ndk_native_app_glue PUBLIC ${NDK_NATIVE_APP_GLUE})
-            set(NDK_APP_GLUE_LIB ndk_native_app_glue)
-        else()
-            message(WARNING "native_app_glue not found - Android build may fail")
-            set(NDK_APP_GLUE_LIB)
-        endif()
-    endif()
-
     target_link_libraries(eos-shooter
         raylib
         ${EOS_LINK_LIBS}
-        ${NDK_APP_GLUE_LIB}
         android
         log
         m

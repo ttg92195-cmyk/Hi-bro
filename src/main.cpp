@@ -7,16 +7,7 @@
 #include "utils/AudioManager.h"
 #include <iostream>
 
-#if defined(PLATFORM_ANDROID)
-#include <android_native_app_glue.h>
-#endif
-
 using namespace EOSShooter;
-
-// ============================================================================
-// Desktop Entry Point
-// ============================================================================
-#if !defined(PLATFORM_ANDROID)
 
 int main() {
     std::cout << "========================================" << std::endl;
@@ -26,8 +17,17 @@ int main() {
 
     Game game;
 
-    // Initialize with 1280x720 window
-    if (!game.Initialize(1280, 720, "EOS Shooter - Multiplayer FPS")) {
+    // Initialize with 1280x720 window (on Android, use GetScreenWidth/Height)
+    int width = 1280;
+    int height = 720;
+
+#if defined(PLATFORM_ANDROID)
+    // On Android, window size will be set by the platform
+    width = 0;
+    height = 0;
+#endif
+
+    if (!game.Initialize(width, height, "EOS Shooter - Multiplayer FPS")) {
         std::cerr << "Failed to initialize game!" << std::endl;
         return -1;
     }
@@ -37,24 +37,3 @@ int main() {
 
     return 0;
 }
-
-// ============================================================================
-// Android Entry Point
-// ============================================================================
-#else
-
-void android_main(struct android_app* app) {
-    // Initialize Raylib for Android
-    InitWindow(0, 0, "EOS Shooter");
-
-    Game game;
-    if (!game.Initialize(GetScreenWidth(), GetScreenHeight(), "EOS Shooter")) {
-        TraceLog(LOG_ERROR, "Failed to initialize game on Android!");
-        return;
-    }
-
-    game.Run();
-    CloseWindow();
-}
-
-#endif
