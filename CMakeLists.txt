@@ -87,7 +87,7 @@ else()
     set(RAYLIB_PATH "${CMAKE_SOURCE_DIR}/third_party/raylib" CACHE PATH "Raylib source path")
     if(EXISTS "${RAYLIB_PATH}/CMakeLists.txt")
         # Raylib Android build - disable desktop backends
-        set(PLATFORM ON CACHE BOOL "" FORCE)
+        set(PLATFORM "Android" CACHE STRING "Target platform" FORCE)
         set(CUSTOMIZE_BUILD ON CACHE BOOL "" FORCE)
         set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
         set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
