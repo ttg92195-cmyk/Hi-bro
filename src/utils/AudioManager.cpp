@@ -144,7 +144,7 @@ void AudioManager::PlayMusic(const std::string& name, bool loop) {
     }
 
     it->second.looping = loop;
-    SetMusicVolume(it->second, masterVolume_ * categoryVolumes_[(int)SoundCategory::MUSIC]);
+    ::SetMusicVolume(it->second, masterVolume_ * categoryVolumes_[(int)SoundCategory::MUSIC]);
     PlayMusicStream(it->second);
     currentMusic_ = name;
 }
@@ -163,17 +163,17 @@ void AudioManager::SetMusicVolume(float volume) {
     if (!currentMusic_.empty()) {
         auto it = musicTracks_.find(currentMusic_);
         if (it != musicTracks_.end()) {
-            SetMusicVolume(it->second, masterVolume_ * volume);
+            ::SetMusicVolume(it->second, masterVolume_ * volume);
         }
     }
 }
 
 void AudioManager::SetMasterVolume(float volume) {
-    masterVolume_ = Clamp(volume, 0.0f, 1.0f);
+    masterVolume_ = std::clamp(volume, 0.0f, 1.0f);
 }
 
 void AudioManager::SetCategoryVolume(SoundCategory category, float volume) {
-    categoryVolumes_[(int)category] = Clamp(volume, 0.0f, 1.0f);
+    categoryVolumes_[(int)category] = std::clamp(volume, 0.0f, 1.0f);
 }
 
 bool AudioManager::IsPlaying(const std::string& name) const {
@@ -212,7 +212,7 @@ float AudioManager::Calculate3DVolume(const Vector3& soundPos, float maxDistance
     // Directional attenuation (sounds behind listener are slightly quieter)
     Vector3 toSound = {dx / distance, dy / distance, dz / distance};
     float dot = toSound.x * listenerForward_.x + toSound.z * listenerForward_.z;
-    float directionalMult = 0.7f + 0.3f * Clamp(dot, 0.0f, 1.0f);
+    float directionalMult = 0.7f + 0.3f * std::clamp(dot, 0.0f, 1.0f);
 
     return attenuation * directionalMult;
 }
