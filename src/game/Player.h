@@ -2,6 +2,7 @@
 // ============================================================================
 // EOS Shooter - Player.h
 // Player entity with movement, combat, inventory, and networking support.
+// Enhanced with 3D weapon model rendering support.
 // ============================================================================
 
 #include "raylib.h"
@@ -13,6 +14,8 @@
 #include <memory>
 
 namespace EOSShooter {
+
+class ModelManager;  // Forward declaration
 
 // Movement states for animation and physics
 enum class MovementState {
@@ -134,6 +137,10 @@ public:
     void AddDeath() { stats_.deaths++; }
     void AddAssist() { stats_.assists++; stats_.score += 50; }
 
+    // === Static Model Manager ===
+    static ModelManager* s_modelManager;
+    static void SetModelManager(ModelManager* mgr) { s_modelManager = mgr; }
+
 private:
     // === Identity ===
     uint64_t playerId_;
@@ -200,6 +207,10 @@ private:
     void UpdateHealthRegen(float deltaTime);
     void ApplyGravity(float deltaTime);
     void UpdateWeapon(float deltaTime);
+
+    // === 3D Weapon Model Rendering ===
+    void RenderWeaponModel3D(WeaponType weaponType, Vector3 weaponOffset,
+                              float yaw, Color tint) const;
 };
 
 } // namespace EOSShooter

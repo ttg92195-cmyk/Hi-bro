@@ -22,6 +22,7 @@ Game::Game()
     , cameraController_(std::make_unique<CameraController>())
     , eosManager_(std::make_unique<EOSManager>())
     , networkManager_(std::make_unique<NetworkManager>())
+    , modelManager_(std::make_unique<ModelManager>())
 {
 }
 
@@ -83,6 +84,15 @@ bool Game::Initialize(int screenWidth, int screenHeight, const std::string& titl
 
     cameraController_->Initialize(screenWidth_, screenHeight_);
 
+    // Initialize Model Manager and set it on entity classes
+    if (modelManager_->Initialize()) {
+        Player::SetModelManager(modelManager_.get());
+        Enemy::SetModelManager(modelManager_.get());
+        TraceLog(LOG_INFO, "Game: ModelManager initialized successfully");
+    } else {
+        TraceLog(LOG_WARNING, "Game: ModelManager initialization failed - using primitive fallbacks");
+    }
+
     SetState(GameState::MENU);
 
     isInitialized_ = true;
@@ -132,6 +142,14 @@ void Game::Shutdown() {
     if (!isInitialized_) return;
 
     TraceLog(LOG_INFO, "Game: Shutting down...");
+
+    // Clear model manager references before destroying
+    Player::SetModelManager(nullptr);
+    Enemy::SetModelManager(nullptr);
+
+    if (modelManager_) {
+        modelManager_->Shutdown();
+    }
 
     networkManager_->Shutdown();
     eosManager_->Shutdown();
@@ -515,6 +533,11 @@ void Game::RenderPlaying() {
 
     // Render pickups
     map_->RenderPickups();
+
+    // FPS weapon viewmodel (local player's weapon in first-person)
+    if (localPlayer_ && !localPlayer_->IsDead()) {
+        RenderFPSWeapon();
+    }
 
     EndMode3D();
 
@@ -1717,5 +1740,138 @@ void Game::RenderTouchControls() {
     }
 }
 #endif
+
+// ============================================================================
+// First-Person Weapon Viewmodel Rendering
+// ============================================================================
+
+void Game::RenderFPSWeapon() {
+    if (!localPlayer_ || localPlayer_->IsDead()) return;
+
+    Weapon* weapon = localPlayer_->GetCurrentWeapon();
+    if (!weapon) return;
+
+    // Get camera position and orientation
+    Camera3D camera = cameraController_->GetRaylibCamera();
+    Vector3 camPos = camera.position;
+    Vector3 camTarget = camera.target;
+    Vector3 camForward = {
+        camTarget.x - camPos.x,
+        camTarget.y - camPos.y,
+        camTarget.z - camPos.z
+    };
+
+    // Normalize forward
+    float fwdLen = sqrtf(camForward.x * camForward.x + camForward.y * camForward.y + camForward.z * camForward.z);
+    if (fwdLen > 0.001f) {
+        camForward.x /= fwdLen;
+        camForward.y /= fwdLen;
+        camForward.z /= fwdLen;
+    }
+
+    // Calculate right and up vectors
+    Vector3 camUp = {0.0f, 1.0f, 0.0f};
+    Vector3 camRight = {
+        camForward.z * camUp.y - camForward.y * camUp.z,
+        camForward.x * camUp.z - camForward.z * camUp.x,
+        camForward.y * camUp.x - camForward.x * camUp.y
+    };
+    float rightLen = sqrtf(camRight.x * camRight.x + camRight.y * camRight.y + camRight.z * camRight.z);
+    if (rightLen > 0.001f) {
+        camRight.x /= rightLen;
+        camRight.y /= rightLen;
+        camRight.z /= rightLen;
+    }
+
+    // Recalculate up vector: up = right x forward
+    Vector3 camUpCalc = {
+        camRight.y * camForward.z - camRight.z * camForward.y,
+        camRight.z * camForward.x - camRight.x * camForward.z,
+        camRight.x * camForward.y - camRight.y * camForward.x
+    };
+
+    // Try to render with 3D model
+    WeaponType weaponType = weapon->GetType();
+    if (modelManager_ && modelManager_->HasWeaponModel(weaponType)) {
+        Model* model = modelManager_->GetWeaponModel(weaponType);
+        if (model) {
+            const FPSViewModelConfig& fpsCfg = modelManager_->GetFPSViewModelConfig(weaponType);
+
+            // Weapon bob effect (subtle movement when walking)
+            float bobX = 0.0f;
+            float bobY = 0.0f;
+            if (localPlayer_->GetMovementState() == MovementState::WALKING ||
+                localPlayer_->GetMovementState() == MovementState::RUNNING) {
+                bobX = sinf(menuAnimTime_ * fpsCfg.bobSpeed) * fpsCfg.bobAmplitude;
+                bobY = cosf(menuAnimTime_ * fpsCfg.bobSpeed * 2.0f) * fpsCfg.bobAmplitude * 0.5f;
+            }
+
+            // Calculate weapon position relative to camera
+            Vector3 offset = fpsCfg.rightOffset;
+            Vector3 weaponPos = {
+                camPos.x + camRight.x * (offset.x + bobX) + camUpCalc.x * (offset.y + bobY) + camForward.x * offset.z,
+                camPos.y + camRight.y * (offset.x + bobX) + camUpCalc.y * (offset.y + bobY) + camForward.y * offset.z,
+                camPos.z + camRight.z * (offset.x + bobX) + camUpCalc.z * (offset.y + bobY) + camForward.z * offset.z
+            };
+
+            // Calculate rotation to face camera forward direction
+            float yaw = atan2f(camForward.x, camForward.z);
+
+            const WeaponModelConfig& cfg = modelManager_->GetWeaponConfig(weaponType);
+            float totalAngle = cfg.rotationAngle + yaw * RAD2DEG;
+
+            // ADS (aim down sights) - move weapon closer to center when aiming
+            Vector3 scale = fpsCfg.scale;
+            if (localPlayer_->IsAiming()) {
+                // Move weapon closer to center for ADS
+                Vector3 adsOffset = {
+                    offset.x * 0.1f,     // Near center
+                    offset.y * 0.5f,     // Slightly lower
+                    offset.z * 0.6f      // Closer to camera
+                };
+                weaponPos = {
+                    camPos.x + camRight.x * adsOffset.x + camUpCalc.x * adsOffset.y + camForward.x * adsOffset.z,
+                    camPos.y + camRight.y * adsOffset.x + camUpCalc.y * adsOffset.y + camForward.y * adsOffset.z,
+                    camPos.z + camRight.z * adsOffset.x + camUpCalc.z * adsOffset.y + camForward.z * adsOffset.z
+                };
+            }
+
+            // Reload animation - tilt weapon down
+            if (weapon->IsReloading()) {
+                weaponPos.y -= 0.1f;
+                totalAngle += 20.0f;  // Tilt down during reload
+            }
+
+            DrawModelEx(*model, weaponPos, cfg.rotationAxis, totalAngle, scale, WHITE);
+        }
+    } else {
+        // Fallback: Simple primitive weapon in FPS view
+        Vector3 offset = {0.3f, -0.3f, -0.5f};
+        Vector3 weaponPos = {
+            camPos.x + camRight.x * offset.x + camUpCalc.x * offset.y + camForward.x * offset.z,
+            camPos.y + camRight.y * offset.x + camUpCalc.y * offset.y + camForward.y * offset.z,
+            camPos.z + camRight.z * offset.x + camUpCalc.z * offset.y + camForward.z * offset.z
+        };
+
+        Color weaponColor = DARKGRAY;
+        float weaponSize = 0.08f;
+        float weaponLen = 0.5f;
+        switch (weaponType) {
+        case WeaponType::SHOTGUN:       weaponColor = (Color){120, 80, 40, 255}; weaponLen = 0.6f; break;
+        case WeaponType::SNIPER_RIFLE:  weaponColor = (Color){50, 70, 90, 255}; weaponLen = 0.7f; break;
+        case WeaponType::RPG:           weaponColor = (Color){80, 60, 40, 255}; weaponLen = 0.5f; weaponSize = 0.12f; break;
+        case WeaponType::PISTOL:        weaponColor = (Color){100, 100, 110, 255}; weaponLen = 0.25f; break;
+        default: break;
+        }
+
+        // Draw weapon as elongated box pointing forward
+        Vector3 halfSize = {
+            camRight.x * weaponSize * 0.5f + camForward.x * weaponLen * 0.5f,
+            weaponSize * 0.5f,
+            camRight.z * weaponSize * 0.5f + camForward.z * weaponLen * 0.5f
+        };
+        DrawCube(weaponPos, weaponSize, weaponSize, weaponLen, weaponColor);
+    }
+}
 
 } // namespace EOSShooter

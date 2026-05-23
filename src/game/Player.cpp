@@ -4,12 +4,16 @@
 // ============================================================================
 
 #include "Player.h"
+#include "ModelManager.h"
 #include "../utils/Math.h"
 #include <algorithm>
 #include <cmath>
 #include <memory>
 
 namespace EOSShooter {
+
+// Static model manager pointer
+ModelManager* Player::s_modelManager = nullptr;
 
 // ============================================================================
 // Construction
@@ -149,7 +153,7 @@ void Player::Render() {
         DrawSphere({pos.x, barY + 0.12f, pos.z}, 0.04f, teamColor);
     }
 
-    // === Weapon visual ===
+    // === Weapon visual (3D model or fallback primitive) ===
     Weapon* weapon = GetCurrentWeapon();
     if (weapon) {
         float wepFwd = 0.6f;
@@ -161,16 +165,20 @@ void Player::Render() {
             pos.z + wepZ
         };
 
-        Color weaponColor = DARKGRAY;
-        // Weapon glow based on type
-        switch (weapon->GetType()) {
-        case WeaponType::SHOTGUN:       weaponColor = (Color){120, 80, 40, 255}; break;
-        case WeaponType::SNIPER_RIFLE:  weaponColor = (Color){50, 70, 90, 255}; break;
-        case WeaponType::RPG:           weaponColor = (Color){80, 60, 40, 255}; break;
-        default: break;
+        // Try to render with 3D model
+        if (s_modelManager && s_modelManager->HasWeaponModel(weapon->GetType())) {
+            RenderWeaponModel3D(weapon->GetType(), weaponOffset, rotation_.y, WHITE);
+        } else {
+            // Fallback: primitive rendering
+            Color weaponColor = DARKGRAY;
+            switch (weapon->GetType()) {
+            case WeaponType::SHOTGUN:       weaponColor = (Color){120, 80, 40, 255}; break;
+            case WeaponType::SNIPER_RIFLE:  weaponColor = (Color){50, 70, 90, 255}; break;
+            case WeaponType::RPG:           weaponColor = (Color){80, 60, 40, 255}; break;
+            default: break;
+            }
+            DrawCube(weaponOffset, 0.08f, 0.08f, 0.5f, weaponColor);
         }
-
-        DrawCube(weaponOffset, 0.08f, 0.08f, 0.5f, weaponColor);
 
         // Weapon muzzle glow
         float muzzleFwd = wepFwd + 0.3f;
@@ -594,6 +602,36 @@ BoundingBox Player::GetBoundingBox() const {
         {position_.x - modelRadius_, position_.y, position_.z - modelRadius_},
         {position_.x + modelRadius_, position_.y + height, position_.z + modelRadius_}
     };
+}
+
+// ============================================================================
+// 3D Weapon Model Rendering
+// ============================================================================
+
+void Player::RenderWeaponModel3D(WeaponType weaponType, Vector3 weaponOffset,
+                                   float yaw, Color tint) const {
+    if (!s_modelManager) return;
+
+    Model* model = s_modelManager->GetWeaponModel(weaponType);
+    if (!model) return;
+
+    const WeaponModelConfig& cfg = s_modelManager->GetWeaponConfig(weaponType);
+
+    // Calculate weapon position with offset
+    Vector3 finalPos = {
+        weaponOffset.x + cfg.positionOffset.x * cosf(yaw) - cfg.positionOffset.z * sinf(yaw),
+        weaponOffset.y + cfg.positionOffset.y,
+        weaponOffset.z + cfg.positionOffset.x * sinf(yaw) + cfg.positionOffset.z * cosf(yaw)
+    };
+
+    // Combine model rotation with player yaw
+    // The weapon model needs to be rotated to face the player's forward direction
+    float totalAngle = cfg.rotationAngle + yaw * RAD2DEG;
+
+    // Calculate scale vector (handle flips)
+    Vector3 scale = cfg.scale;
+
+    DrawModelEx(*model, finalPos, cfg.rotationAxis, totalAngle, scale, tint);
 }
 
 } // namespace EOSShooter

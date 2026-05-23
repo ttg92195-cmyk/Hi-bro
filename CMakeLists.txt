@@ -38,6 +38,7 @@ set(GAME_SOURCES
     src/game/TextureGenerator.cpp
     src/game/ParticleSystem.cpp
     src/game/CameraController.cpp
+    src/game/ModelManager.cpp
     src/multiplayer/EOSManager.cpp
     src/multiplayer/NetworkManager.cpp
     src/utils/InputManager.cpp
@@ -54,6 +55,7 @@ set(GAME_HEADERS
     src/game/TextureGenerator.h
     src/game/ParticleSystem.h
     src/game/CameraController.h
+    src/game/ModelManager.h
     src/multiplayer/EOSManager.h
     src/multiplayer/NetworkManager.h
     src/utils/Math.h

@@ -7,12 +7,16 @@
 #include "Player.h"
 #include "Map.h"
 #include "Game.h"
+#include "ModelManager.h"
 #include "../utils/Math.h"
 #include <cmath>
 #include <algorithm>
 #include <cstdlib>
 
 namespace EOSShooter {
+
+// Static model manager pointer
+ModelManager* Enemy::s_modelManager = nullptr;
 
 // ============================================================================
 // Construction
@@ -261,7 +265,7 @@ void Enemy::Render() {
     DrawLine3D({barBgStart.x, barY, barBgStart.z}, {barBgEnd.x, barY, barBgEnd.z}, Fade((Color){100, 100, 100, 255}, 0.5f));
     DrawLine3D({barBgStart.x, barY - barHeight * 2, barBgStart.z}, {barBgEnd.x, barY - barHeight * 2, barBgEnd.z}, Fade((Color){100, 100, 100, 255}, 0.5f));
 
-    // === Weapon Visual with glow for special enemies ===
+    // === Weapon Visual (3D model or fallback primitive) ===
     float wepFwd = 0.5f;
     Vector3 weaponOffset = {
         position_.x + sinf(rotation_.y) * wepFwd,
@@ -269,40 +273,73 @@ void Enemy::Render() {
         position_.z + cosf(rotation_.y) * wepFwd
     };
 
-    Color weaponColor = (Color){50, 50, 55, 255};
-    float weaponLen = 0.4f;
-    float weaponW = 0.06f;
+    // Try 3D model rendering first
+    WeaponType enemyWeaponType = GetWeaponTypeForClass();
+    bool modelRendered = false;
 
-    switch (enemyClass_) {
-    case EnemyClass::HEAVY:
-        weaponLen = 0.6f;
-        weaponW = 0.1f;
-        weaponColor = (Color){70, 70, 80, 255};
-        break;
-    case EnemyClass::SNIPER:
-        weaponLen = 0.7f;
-        weaponW = 0.04f;
-        weaponColor = (Color){40, 50, 60, 255};
-        break;
-    case EnemyClass::SHOTGUNNER:
-        weaponLen = 0.45f;
-        weaponW = 0.1f;
-        weaponColor = (Color){90, 60, 30, 255};
-        break;
-    case EnemyClass::ROCKETEER:
-        weaponLen = 0.6f;
-        weaponW = 0.12f;
-        weaponColor = (Color){80, 40, 30, 255};
-        break;
-    default:
-        break;
+    if (s_modelManager && s_modelManager->HasWeaponModel(enemyWeaponType)) {
+        Model* model = s_modelManager->GetWeaponModel(enemyWeaponType);
+        if (model) {
+            const WeaponModelConfig& cfg = s_modelManager->GetWeaponConfig(enemyWeaponType);
+
+            // Calculate weapon position with offset rotated by enemy yaw
+            Vector3 finalPos = {
+                weaponOffset.x + cfg.positionOffset.x * cosf(rotation_.y) - cfg.positionOffset.z * sinf(rotation_.y),
+                weaponOffset.y + cfg.positionOffset.y,
+                weaponOffset.z + cfg.positionOffset.x * sinf(rotation_.y) + cfg.positionOffset.z * cosf(rotation_.y)
+            };
+
+            float totalAngle = cfg.rotationAngle + rotation_.y * RAD2DEG;
+
+            // Scale adjustments for specific enemy classes
+            Vector3 scale = cfg.scale;
+            if (enemyClass_ == EnemyClass::HEAVY) {
+                scale.x *= 1.3f;
+                scale.y *= 1.3f;
+                scale.z *= 1.3f;
+            }
+
+            DrawModelEx(*model, finalPos, cfg.rotationAxis, totalAngle, scale, weaponColor);
+            modelRendered = true;
+        }
     }
 
-    DrawCube(weaponOffset, weaponW, weaponW, weaponLen, weaponColor);
+    // Fallback: primitive rendering
+    if (!modelRendered) {
+        float weaponLen = 0.4f;
+        float weaponW = 0.06f;
+
+        switch (enemyClass_) {
+        case EnemyClass::HEAVY:
+            weaponLen = 0.6f;
+            weaponW = 0.1f;
+            weaponColor = (Color){70, 70, 80, 255};
+            break;
+        case EnemyClass::SNIPER:
+            weaponLen = 0.7f;
+            weaponW = 0.04f;
+            weaponColor = (Color){40, 50, 60, 255};
+            break;
+        case EnemyClass::SHOTGUNNER:
+            weaponLen = 0.45f;
+            weaponW = 0.1f;
+            weaponColor = (Color){90, 60, 30, 255};
+            break;
+        case EnemyClass::ROCKETEER:
+            weaponLen = 0.6f;
+            weaponW = 0.12f;
+            weaponColor = (Color){80, 40, 30, 255};
+            break;
+        default:
+            break;
+        }
+
+        DrawCube(weaponOffset, weaponW, weaponW, weaponLen, weaponColor);
+    }
 
     // Weapon glow for special enemies
     if (enemyClass_ == EnemyClass::ROCKETEER) {
-        DrawSphere(weaponOffset, weaponW * 2.0f, Fade((Color){255, 60, 0, 255}, 0.08f));
+        DrawSphere(weaponOffset, 0.12f * 2.0f, Fade((Color){255, 60, 0, 255}, 0.08f));
     } else if (enemyClass_ == EnemyClass::SNIPER) {
         // Laser sight dot
         float laserLen = 2.0f;
@@ -314,7 +351,7 @@ void Enemy::Render() {
         DrawLine3D(weaponOffset, laserEnd, Fade((Color){255, 0, 0, 255}, 0.15f));
     } else if (enemyClass_ == EnemyClass::HEAVY) {
         // Muzzle glow hint
-        DrawSphere(weaponOffset, weaponW * 1.5f, Fade(accentColor, 0.06f));
+        DrawSphere(weaponOffset, 0.12f * 1.5f, Fade(accentColor, 0.06f));
     }
 
     // === Alert indicator when in CHASE/ATTACK state ===
@@ -705,6 +742,17 @@ BoundingBox Enemy::GetBoundingBox() const {
         {position_.x - radius, position_.y, position_.z - radius},
         {position_.x + radius, position_.y + height, position_.z + radius}
     };
+}
+
+WeaponType Enemy::GetWeaponTypeForClass() const {
+    switch (enemyClass_) {
+    case EnemyClass::GRUNT:      return WeaponType::ASSAULT_RIFLE;
+    case EnemyClass::HEAVY:      return WeaponType::ASSAULT_RIFLE;  // Uses AR model, bigger scale
+    case EnemyClass::SNIPER:     return WeaponType::SNIPER_RIFLE;
+    case EnemyClass::SHOTGUNNER: return WeaponType::SHOTGUN;
+    case EnemyClass::ROCKETEER:  return WeaponType::RPG;
+    default:                     return WeaponType::ASSAULT_RIFLE;
+    }
 }
 
 } // namespace EOSShooter

@@ -11,6 +11,7 @@
 #include "Map.h"
 #include "ParticleSystem.h"
 #include "CameraController.h"
+#include "ModelManager.h"
 #include "../multiplayer/EOSManager.h"
 #include "../multiplayer/NetworkManager.h"
 #include <vector>
@@ -158,6 +159,7 @@ private:
     void RenderHUD();
     void RenderCrosshair();
     void RenderTouchControls(); // Android touch overlay
+    void RenderFPSWeapon();     // First-person weapon viewmodel
     void HandleTouchInput(float deltaTime); // Android touch input
 
     // === Collision ===
@@ -212,6 +214,7 @@ private:
     std::unique_ptr<CameraController> cameraController_;
     std::unique_ptr<EOSManager> eosManager_;
     std::unique_ptr<NetworkManager> networkManager_;
+    std::unique_ptr<ModelManager> modelManager_;
 
     // === Scoring ===
     std::vector<ScoreEntry> leaderboard_;

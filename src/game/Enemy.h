@@ -11,6 +11,8 @@
 
 namespace EOSShooter {
 
+class ModelManager;  // Forward declaration
+
 enum class AIState {
     IDLE,
     PATROL,
@@ -63,7 +65,15 @@ public:
     bool IsDead() const { return aiState_ == AIState::DEAD; }
     float GetDeathTimer() const { return deathTimer_; }
     AIState GetAIState() const { return aiState_; }
+    EnemyClass GetEnemyClass() const { return enemyClass_; }
     BoundingBox GetBoundingBox() const;
+
+    // === Static Model Manager ===
+    static ModelManager* s_modelManager;
+    static void SetModelManager(ModelManager* mgr) { s_modelManager = mgr; }
+
+    // === Weapon Type for Model ===
+    WeaponType GetWeaponTypeForClass() const;
 
 private:
     // === Identity ===
