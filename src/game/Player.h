@@ -85,6 +85,7 @@ public:
     bool IsShooting() const { return isShooting_; }
     bool IsDead() const { return isDead_; }
     bool IsReloading() const;
+    bool IsAiming() const { return isAiming_; }
 
     // === Network Interpolation ===
     void SetTargetPosition(const Vector3& target) { targetPosition_ = target; }
