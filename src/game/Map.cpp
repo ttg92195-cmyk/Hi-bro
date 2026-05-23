@@ -14,6 +14,37 @@
 
 namespace EOSShooter {
 
+// Helper: compute correct axis-aligned bounding box for a Wall
+// Walls defined by (start, end) run along their primary axis,
+// with thickness perpendicular to it.
+static BoundingBox WallGetBoundingBox(const Wall& wall) {
+    Vector3 center = {
+        (wall.start.x + wall.end.x) * 0.5f,
+        wall.height * 0.5f,
+        (wall.start.z + wall.end.z) * 0.5f
+    };
+    float dx = wall.end.x - wall.start.x;
+    float dz = wall.end.z - wall.start.z;
+    float halfThick = wall.thickness * 0.5f;
+
+    // Determine which axis the wall runs along
+    if (fabsf(dx) >= fabsf(dz)) {
+        // Wall runs along X-axis, thickness is in Z
+        float halfLen = fabsf(dx) * 0.5f;
+        return {
+            {center.x - halfLen, 0, center.z - halfThick},
+            {center.x + halfLen, wall.height, center.z + halfThick}
+        };
+    } else {
+        // Wall runs along Z-axis, thickness is in X
+        float halfLen = fabsf(dz) * 0.5f;
+        return {
+            {center.x - halfThick, 0, center.z - halfLen},
+            {center.x + halfThick, wall.height, center.z + halfLen}
+        };
+    }
+}
+
 // ============================================================================
 // Load
 // ============================================================================
@@ -1650,21 +1681,7 @@ RayCollision Map::Raycast(const Ray& ray, float maxDistance) const {
 
     // Wall raycasts
     for (const auto& wall : walls_) {
-        Vector3 center = {
-            (wall.start.x + wall.end.x) * 0.5f,
-            wall.height * 0.5f,
-            (wall.start.z + wall.end.z) * 0.5f
-        };
-
-        float length = sqrtf(
-            (wall.end.x - wall.start.x) * (wall.end.x - wall.start.x) +
-            (wall.end.z - wall.start.z) * (wall.end.z - wall.start.z)
-        );
-
-        BoundingBox box = {
-            {center.x - length * 0.5f, 0, center.z - wall.thickness * 0.5f},
-            {center.x + length * 0.5f, wall.height, center.z + wall.thickness * 0.5f}
-        };
+        BoundingBox box = WallGetBoundingBox(wall);
 
         RayCollision hit = GetRayCollisionBox(ray, box);
         if (hit.hit && hit.distance < closestHit.distance) {
@@ -1719,21 +1736,7 @@ RayCollision Map::Raycast(const Ray& ray, float maxDistance) const {
 bool Map::CheckCollision(const Vector3& position, float radius) const {
     // Wall collisions
     for (const auto& wall : walls_) {
-        Vector3 center = {
-            (wall.start.x + wall.end.x) * 0.5f,
-            wall.height * 0.5f,
-            (wall.start.z + wall.end.z) * 0.5f
-        };
-
-        float length = sqrtf(
-            (wall.end.x - wall.start.x) * (wall.end.x - wall.start.x) +
-            (wall.end.z - wall.start.z) * (wall.end.z - wall.start.z)
-        );
-
-        BoundingBox box = {
-            {center.x - length * 0.5f, 0, center.z - wall.thickness * 0.5f},
-            {center.x + length * 0.5f, wall.height, center.z + wall.thickness * 0.5f}
-        };
+        BoundingBox box = WallGetBoundingBox(wall);
 
         if (CheckCollisionBoxSphere(box, position, radius)) {
             return true;
@@ -1823,24 +1826,7 @@ Vector3 Map::ResolveCollision(const Vector3& position, float radius) const {
 
     // Wall resolution - push player out using minimum penetration axis
     for (const auto& wall : walls_) {
-        Vector3 center = {
-            (wall.start.x + wall.end.x) * 0.5f,
-            wall.height * 0.5f,
-            (wall.start.z + wall.end.z) * 0.5f
-        };
-
-        float length = sqrtf(
-            (wall.end.x - wall.start.x) * (wall.end.x - wall.start.x) +
-            (wall.end.z - wall.start.z) * (wall.end.z - wall.start.z)
-        );
-
-        float halfLen = length * 0.5f;
-        float halfThick = wall.thickness * 0.5f;
-
-        BoundingBox box = {
-            {center.x - halfLen, 0, center.z - halfThick},
-            {center.x + halfLen, wall.height, center.z + halfThick}
-        };
+        BoundingBox box = WallGetBoundingBox(wall);
 
         if (CheckCollisionBoxSphere(box, resolved, radius)) {
             // Skip if player is above the wall
@@ -2033,6 +2019,27 @@ float Map::GetGroundHeight(const Vector3& position, float playerRadius) const {
             // If player is near or above this stair height
             if (position.y >= stairY - 0.5f && stairY > groundY) {
                 groundY = stairY;
+            }
+        }
+    }
+
+    // Check ramps
+    for (const auto& ramp : ramps_) {
+        // Transform player position into ramp local space
+        float dx = position.x - ramp.baseCenter.x;
+        float dz = position.z - ramp.baseCenter.z;
+        float cosR = cosf(-ramp.angle);
+        float sinR = sinf(-ramp.angle);
+        float localX = dx * cosR - dz * sinR;
+        float localZ = dx * sinR + dz * cosR;
+
+        float halfW = ramp.width * 0.5f + playerRadius;
+        if (localX >= -halfW && localX <= halfW &&
+            localZ >= -playerRadius && localZ <= ramp.length + playerRadius) {
+            float t = std::clamp(localZ / ramp.length, 0.0f, 1.0f);
+            float rampY = ramp.baseHeight + (ramp.topHeight - ramp.baseHeight) * t;
+            if (position.y >= rampY - 0.5f && rampY > groundY) {
+                groundY = rampY;
             }
         }
     }

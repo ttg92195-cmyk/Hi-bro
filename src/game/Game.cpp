@@ -1688,6 +1688,44 @@ void Game::HandleTouchInput(float deltaTime) {
             localPlayer_->Reload();
         }
     }
+
+    // Reload button (double-tap already handled, also check right-top zone)
+    Vector2 reloadCenter = {(float)screenWidth_ - 120.0f, (float)screenHeight_ - 280.0f};
+    float reloadRadius = 35.0f;
+    static bool reloadPressed = false;
+    bool reloadTouch = false;
+    for (int i = 0; i < touchCount; i++) {
+        Vector2 pos = GetTouchPosition(i);
+        float dx = pos.x - reloadCenter.x;
+        float dy = pos.y - reloadCenter.y;
+        if (dx * dx + dy * dy < reloadRadius * reloadRadius) {
+            reloadTouch = true;
+            break;
+        }
+    }
+    if (reloadTouch && !reloadPressed) {
+        localPlayer_->Reload();
+    }
+    reloadPressed = reloadTouch;
+
+    // Jump button
+    Vector2 jumpCenter = {(float)screenWidth_ - 220.0f, (float)screenHeight_ - 200.0f};
+    float jumpRadius = 30.0f;
+    static bool jumpPressed = false;
+    bool jumpTouch = false;
+    for (int i = 0; i < touchCount; i++) {
+        Vector2 pos = GetTouchPosition(i);
+        float dx = pos.x - jumpCenter.x;
+        float dy = pos.y - jumpCenter.y;
+        if (dx * dx + dy * dy < jumpRadius * jumpRadius) {
+            jumpTouch = true;
+            break;
+        }
+    }
+    if (jumpTouch && !jumpPressed) {
+        localPlayer_->Jump();
+    }
+    jumpPressed = jumpTouch;
 }
 
 void Game::RenderTouchControls() {
@@ -1741,30 +1779,12 @@ void Game::RenderTouchControls() {
     DrawCircleLines((int)reloadCenter.x, (int)reloadCenter.y, (int)reloadRadius, Fade((Color){80, 140, 255, 255}, 0.4f));
     DrawText("R", (int)reloadCenter.x - 5, (int)reloadCenter.y - 8, 16, (Color){120, 180, 255, 255});
 
-    for (int i = 0; i < GetTouchPointCount(); i++) {
-        Vector2 pos = GetTouchPosition(i);
-        float dx = pos.x - reloadCenter.x;
-        float dy = pos.y - reloadCenter.y;
-        if (dx * dx + dy * dy < reloadRadius * reloadRadius) {
-            localPlayer_->Reload();
-        }
-    }
-
     // === Jump Button ===
     Vector2 jumpCenter = {(float)screenWidth_ - 220.0f, (float)screenHeight_ - 200.0f};
     float jumpRadius = 30.0f;
     DrawCircle((int)jumpCenter.x, (int)jumpCenter.y, (int)jumpRadius, Fade((Color){0, 150, 80, 255}, 0.25f));
     DrawCircleLines((int)jumpCenter.x, (int)jumpCenter.y, (int)jumpRadius, Fade((Color){0, 220, 120, 255}, 0.4f));
     DrawText("J", (int)jumpCenter.x - 4, (int)jumpCenter.y - 8, 16, (Color){0, 220, 120, 255});
-
-    for (int i = 0; i < GetTouchPointCount(); i++) {
-        Vector2 pos = GetTouchPosition(i);
-        float dx = pos.x - jumpCenter.x;
-        float dy = pos.y - jumpCenter.y;
-        if (dx * dx + dy * dy < jumpRadius * jumpRadius) {
-            if (localPlayer_) localPlayer_->Jump();
-        }
-    }
 }
 #endif
 
@@ -1893,7 +1913,7 @@ void Game::RenderFPSWeapon() {
         Color handleColor = (Color){60, 40, 25, 255};  // brown grip
         Color accentColor = (Color){30, 30, 35, 255};  // trigger guard etc.
 
-        Vector3 baseOffset = {0.22f, -0.25f, -0.4f}; // right, down, forward from camera
+        Vector3 baseOffset = {0.22f, -0.25f, 0.5f}; // right, down, forward from camera
 
         switch (weaponType) {
         case WeaponType::ASSAULT_RIFLE:
@@ -1927,7 +1947,7 @@ void Game::RenderFPSWeapon() {
         case WeaponType::RPG:
             bodyLength = 0.45f; bodyWidth = 0.08f; bodyHeight = 0.08f;
             handleHeight = 0.12f;
-            baseOffset = {0.2f, -0.3f, -0.35f};
+            baseOffset = {0.2f, -0.3f, 0.45f};
             bodyColor = (Color){80, 70, 40, 255};    // military green
             barrelColor = (Color){60, 55, 35, 255};
             handleColor = (Color){50, 35, 20, 255};
@@ -1935,7 +1955,7 @@ void Game::RenderFPSWeapon() {
         case WeaponType::PISTOL:
             bodyLength = 0.2f; bodyWidth = 0.03f; bodyHeight = 0.055f;
             handleHeight = 0.1f;
-            baseOffset = {0.18f, -0.2f, -0.3f};
+            baseOffset = {0.18f, -0.2f, 0.35f};
             bodyColor = (Color){90, 90, 100, 255};   // silver pistol
             barrelColor = (Color){60, 60, 70, 255};
             handleColor = (Color){45, 30, 15, 255};
@@ -1943,7 +1963,7 @@ void Game::RenderFPSWeapon() {
         case WeaponType::MELEE:
             bodyLength = 0.3f; bodyWidth = 0.02f; bodyHeight = 0.04f;
             handleHeight = 0.08f;
-            baseOffset = {0.15f, -0.15f, -0.25f};
+            baseOffset = {0.15f, -0.15f, 0.3f};
             bodyColor = (Color){160, 160, 170, 255}; // blade steel
             barrelColor = (Color){180, 180, 190, 255};
             handleColor = (Color){40, 25, 10, 255};
