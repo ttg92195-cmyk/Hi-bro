@@ -5,6 +5,7 @@
 
 #include "Game.h"
 #include "../utils/Math.h"
+#include "rlgl.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -349,6 +350,32 @@ void Game::UpdatePlaying(float deltaTime) {
 #else
         localPlayer_->Update(deltaTime);
 #endif
+
+        // === Wall/obstacle collision resolution ===
+        // After player moves, check if they're inside any wall/pillar/platform
+        // and push them out if so.
+        {
+            Vector3 pos = localPlayer_->GetPosition();
+            float playerRadius = 0.4f;
+
+            // Update ground level based on map geometry (platforms, stairs, etc.)
+            float groundY = map_->GetGroundHeight(pos, playerRadius);
+            localPlayer_->SetGroundLevel(groundY);
+
+            // Resolve collision with map geometry (walls, pillars, platforms, env objects)
+            if (map_->CheckCollision(pos, playerRadius)) {
+                Vector3 resolved = map_->ResolveCollision(pos, playerRadius);
+                localPlayer_->SetPosition(resolved);
+            }
+
+            // Clamp to map bounds
+            Vector3 bounds = map_->GetBounds();
+            Vector3 clamped = localPlayer_->GetPosition();
+            clamped.x = std::clamp(clamped.x, -bounds.x + playerRadius, bounds.x - playerRadius);
+            clamped.z = std::clamp(clamped.z, -bounds.z + playerRadius, bounds.z - playerRadius);
+            localPlayer_->SetPosition(clamped);
+        }
+
         cameraController_->FollowPlayer(localPlayer_, deltaTime);
 
         // Handle player shooting
@@ -1845,32 +1872,195 @@ void Game::RenderFPSWeapon() {
             DrawModelEx(*model, weaponPos, cfg.rotationAxis, totalAngle, scale, WHITE);
         }
     } else {
-        // Fallback: Simple primitive weapon in FPS view
-        Vector3 offset = {0.3f, -0.3f, -0.5f};
-        Vector3 weaponPos = {
-            camPos.x + camRight.x * offset.x + camUpCalc.x * offset.y + camForward.x * offset.z,
-            camPos.y + camRight.y * offset.x + camUpCalc.y * offset.y + camForward.y * offset.z,
-            camPos.z + camRight.z * offset.x + camUpCalc.z * offset.y + camForward.z * offset.z
-        };
+        // Fallback: Draw a recognizable FPS weapon using multiple primitives
+        // positioned relative to the camera with proper orientation
 
-        Color weaponColor = DARKGRAY;
-        float weaponSize = 0.08f;
-        float weaponLen = 0.5f;
-        switch (weaponType) {
-        case WeaponType::SHOTGUN:       weaponColor = (Color){120, 80, 40, 255}; weaponLen = 0.6f; break;
-        case WeaponType::SNIPER_RIFLE:  weaponColor = (Color){50, 70, 90, 255}; weaponLen = 0.7f; break;
-        case WeaponType::RPG:           weaponColor = (Color){80, 60, 40, 255}; weaponLen = 0.5f; weaponSize = 0.12f; break;
-        case WeaponType::PISTOL:        weaponColor = (Color){100, 100, 110, 255}; weaponLen = 0.25f; break;
-        default: break;
+        float weaponBobX = 0.0f;
+        float weaponBobY = 0.0f;
+        if (localPlayer_->GetMovementState() == MovementState::WALKING ||
+            localPlayer_->GetMovementState() == MovementState::RUNNING) {
+            weaponBobX = sinf(menuAnimTime_ * 10.0f) * 0.01f;
+            weaponBobY = cosf(menuAnimTime_ * 20.0f) * 0.005f;
         }
 
-        // Draw weapon as elongated box pointing forward
-        Vector3 halfSize = {
-            camRight.x * weaponSize * 0.5f + camForward.x * weaponLen * 0.5f,
-            weaponSize * 0.5f,
-            camRight.z * weaponSize * 0.5f + camForward.z * weaponLen * 0.5f
+        // Weapon-specific parameters
+        float bodyWidth = 0.04f;   // narrow width
+        float bodyHeight = 0.06f;  // height of the gun body
+        float bodyLength = 0.4f;   // barrel/body length forward
+        float handleHeight = 0.12f; // grip handle length down
+        Color bodyColor = (Color){80, 80, 90, 255};    // dark steel
+        Color barrelColor = (Color){50, 50, 60, 255};  // darker barrel
+        Color handleColor = (Color){60, 40, 25, 255};  // brown grip
+        Color accentColor = (Color){30, 30, 35, 255};  // trigger guard etc.
+
+        Vector3 baseOffset = {0.22f, -0.25f, -0.4f}; // right, down, forward from camera
+
+        switch (weaponType) {
+        case WeaponType::ASSAULT_RIFLE:
+            bodyLength = 0.5f; bodyWidth = 0.04f; bodyHeight = 0.06f;
+            handleHeight = 0.12f;
+            bodyColor = (Color){70, 70, 80, 255};
+            barrelColor = (Color){40, 40, 50, 255};
+            handleColor = (Color){50, 35, 20, 255};
+            break;
+        case WeaponType::SMG:
+            bodyLength = 0.35f; bodyWidth = 0.04f; bodyHeight = 0.07f;
+            handleHeight = 0.10f;
+            bodyColor = (Color){90, 85, 75, 255};
+            barrelColor = (Color){55, 55, 60, 255};
+            handleColor = (Color){45, 30, 15, 255};
+            break;
+        case WeaponType::SHOTGUN:
+            bodyLength = 0.55f; bodyWidth = 0.05f; bodyHeight = 0.06f;
+            handleHeight = 0.13f;
+            bodyColor = (Color){120, 80, 40, 255};   // wooden shotgun
+            barrelColor = (Color){50, 50, 55, 255};
+            handleColor = (Color){100, 65, 30, 255};
+            break;
+        case WeaponType::SNIPER_RIFLE:
+            bodyLength = 0.65f; bodyWidth = 0.035f; bodyHeight = 0.055f;
+            handleHeight = 0.14f;
+            bodyColor = (Color){50, 70, 90, 255};    // tactical blue-steel
+            barrelColor = (Color){35, 35, 45, 255};
+            handleColor = (Color){40, 35, 25, 255};
+            break;
+        case WeaponType::RPG:
+            bodyLength = 0.45f; bodyWidth = 0.08f; bodyHeight = 0.08f;
+            handleHeight = 0.12f;
+            baseOffset = {0.2f, -0.3f, -0.35f};
+            bodyColor = (Color){80, 70, 40, 255};    // military green
+            barrelColor = (Color){60, 55, 35, 255};
+            handleColor = (Color){50, 35, 20, 255};
+            break;
+        case WeaponType::PISTOL:
+            bodyLength = 0.2f; bodyWidth = 0.03f; bodyHeight = 0.055f;
+            handleHeight = 0.1f;
+            baseOffset = {0.18f, -0.2f, -0.3f};
+            bodyColor = (Color){90, 90, 100, 255};   // silver pistol
+            barrelColor = (Color){60, 60, 70, 255};
+            handleColor = (Color){45, 30, 15, 255};
+            break;
+        case WeaponType::MELEE:
+            bodyLength = 0.3f; bodyWidth = 0.02f; bodyHeight = 0.04f;
+            handleHeight = 0.08f;
+            baseOffset = {0.15f, -0.15f, -0.25f};
+            bodyColor = (Color){160, 160, 170, 255}; // blade steel
+            barrelColor = (Color){180, 180, 190, 255};
+            handleColor = (Color){40, 25, 10, 255};
+            break;
+        }
+
+        // Apply weapon bob
+        baseOffset.x += weaponBobX;
+        baseOffset.y += weaponBobY;
+
+        // Reload animation - tilt down
+        float reloadTilt = 0.0f;
+        if (weapon->IsReloading()) {
+            reloadTilt = 0.15f;
+            baseOffset.y -= 0.08f;
+        }
+
+        // Helper: compute world position from camera-relative offset
+        auto camOffsetToWorld = [&](Vector3 off) -> Vector3 {
+            return {
+                camPos.x + camRight.x * off.x + camUpCalc.x * off.y + camForward.x * off.z,
+                camPos.y + camRight.y * off.x + camUpCalc.y * off.y + camForward.y * off.z,
+                camPos.z + camRight.z * off.x + camUpCalc.z * off.y + camForward.z * off.z
+            };
         };
-        DrawCube(weaponPos, weaponSize, weaponSize, weaponLen, weaponColor);
+
+        // === Draw weapon body (main receiver) ===
+        // The body is oriented along the camera forward direction
+        {
+            Vector3 bodyPos = camOffsetToWorld(baseOffset);
+            // Use DrawCube but orient it: width along camRight, height along camUp, length along camForward
+            // We approximate by drawing a small axis-aligned cube at the correct position
+            // Since we're in 3D mode, we draw it as a box with forward direction
+            // Use rlgl for proper orientation
+            float hw = bodyWidth * 0.5f;
+            float hh = bodyHeight * 0.5f;
+            float hl = bodyLength * 0.5f;
+
+            // Draw 6 faces of the body box manually for proper orientation
+            // Front face (toward camera forward)
+            Vector3 fc = camOffsetToWorld({baseOffset.x, baseOffset.y, baseOffset.z + hl});
+            // Back face
+            Vector3 bc = camOffsetToWorld({baseOffset.x, baseOffset.y, baseOffset.z - hl});
+
+            // Use simple DrawCube approach but with rotated coordinate system
+            // We'll draw a rotated cube using rlgl
+            rlPushMatrix();
+            rlTranslatef(bodyPos.x, bodyPos.y, bodyPos.z);
+
+            // Calculate rotation matrix from camera basis vectors
+            // We want: local X = camRight, local Y = camUp, local Z = camForward
+            float mat[16] = {
+                camRight.x,   camRight.y,   camRight.z,   0,
+                camUpCalc.x,  camUpCalc.y,  camUpCalc.z,  0,
+                camForward.x, camForward.y, camForward.z, 0,
+                0,            0,            0,             1
+            };
+            rlMultMatrixf(mat);
+
+            // Apply reload tilt around local X axis
+            if (reloadTilt > 0.0f) {
+                rlRotatef(reloadTilt * RAD2DEG, 1, 0, 0);
+            }
+
+            // Now draw in local space: X=right, Y=up, Z=forward
+            // Main body
+            DrawCube(Vector3{0, 0, 0}, bodyWidth, bodyHeight, bodyLength, bodyColor);
+
+            // Barrel (extends forward from body)
+            float barrelLen = bodyLength * 0.4f;
+            float barrelOffset = bodyLength * 0.5f + barrelLen * 0.5f;
+            DrawCube(Vector3{0, bodyHeight * 0.1f, barrelOffset},
+                     bodyWidth * 0.6f, bodyWidth * 0.6f, barrelLen, barrelColor);
+
+            // Handle/grip (extends downward from body)
+            DrawCube(Vector3{0, -bodyHeight * 0.5f - handleHeight * 0.5f, -bodyLength * 0.15f},
+                     bodyWidth * 0.8f, handleHeight, bodyWidth * 0.8f, handleColor);
+
+            // Magazine (under the body, for rifles/SMG)
+            if (weaponType == WeaponType::ASSAULT_RIFLE || weaponType == WeaponType::SMG) {
+                float magH = 0.08f;
+                DrawCube(Vector3{0, -bodyHeight * 0.5f - magH * 0.5f, bodyLength * 0.05f},
+                         bodyWidth * 0.7f, magH, bodyWidth * 1.2f, accentColor);
+            }
+
+            // Stock (extends backward for rifles)
+            if (weaponType == WeaponType::ASSAULT_RIFLE || weaponType == WeaponType::SNIPER_RIFLE || weaponType == WeaponType::SHOTGUN) {
+                float stockLen = bodyLength * 0.35f;
+                float stockOffset = -bodyLength * 0.5f - stockLen * 0.5f;
+                DrawCube(Vector3{0, -bodyHeight * 0.15f, stockOffset},
+                         bodyWidth * 0.9f, bodyHeight * 0.7f, stockLen, handleColor);
+            }
+
+            // Scope on sniper
+            if (weaponType == WeaponType::SNIPER_RIFLE) {
+                DrawCube(Vector3{0, bodyHeight * 0.5f + 0.02f, bodyLength * 0.1f},
+                         bodyWidth * 0.5f, 0.03f, bodyLength * 0.25f, (Color){30, 30, 40, 255});
+                // Scope lens
+                DrawSphere(Vector3{0, bodyHeight * 0.5f + 0.02f, bodyLength * 0.1f + bodyLength * 0.125f},
+                           0.015f, (Color){100, 200, 255, 200});
+            }
+
+            // Muzzle flash when shooting
+            if (localPlayer_->IsShooting()) {
+                float muzzleZ = bodyLength * 0.5f + barrelLen + 0.02f;
+                DrawSphere(Vector3{0, bodyHeight * 0.1f, muzzleZ}, 0.03f,
+                           Fade((Color){255, 200, 50, 255}, 0.7f));
+            }
+
+            // RPG warhead
+            if (weaponType == WeaponType::RPG) {
+                float warheadZ = bodyLength * 0.5f + barrelLen + 0.05f;
+                DrawSphere(Vector3{0, 0, warheadZ}, 0.04f, (Color){120, 60, 30, 255});
+            }
+
+            rlPopMatrix();
+        }
     }
 }
 

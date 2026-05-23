@@ -134,6 +134,7 @@ public:
     // === Setters ===
     void SetIsLocal(bool local) { isLocal_ = local; }
     void SetTeamId(TeamId team) { teamId_ = team; }
+    void SetGroundLevel(float level) { groundLevel_ = level; }
     void AddKill() { stats_.kills++; stats_.score += 100; }
     void AddDeath() { stats_.deaths++; }
     void AddAssist() { stats_.assists++; stats_.score += 50; }

@@ -376,7 +376,7 @@ void Player::ApplyGravity(float deltaTime) {
         position_.y += velocity_.y * deltaTime;
     }
 
-    // Ground collision
+    // Ground collision - check if player has fallen below ground level
     if (position_.y <= groundLevel_) {
         position_.y = groundLevel_;
         velocity_.y = 0;
@@ -385,10 +385,28 @@ void Player::ApplyGravity(float deltaTime) {
             moveState_ = MovementState::IDLE;
         }
     } else {
-        isGrounded_ = false;
-        if (velocity_.y < 0 && moveState_ == MovementState::JUMPING) {
-            moveState_ = MovementState::FALLING;
+        // Check if player is on the ground (not falling)
+        // A player is grounded if they're very close to ground level and not moving up
+        if (position_.y <= groundLevel_ + 0.05f && velocity_.y <= 0.0f) {
+            position_.y = groundLevel_;
+            velocity_.y = 0;
+            isGrounded_ = true;
+            if (moveState_ == MovementState::JUMPING || moveState_ == MovementState::FALLING) {
+                moveState_ = MovementState::IDLE;
+            }
+        } else {
+            isGrounded_ = false;
+            if (velocity_.y < 0 && moveState_ == MovementState::JUMPING) {
+                moveState_ = MovementState::FALLING;
+            }
         }
+    }
+
+    // Safety: prevent falling through the floor
+    if (position_.y < groundLevel_) {
+        position_.y = groundLevel_;
+        velocity_.y = 0;
+        isGrounded_ = true;
     }
 }
 

@@ -1765,13 +1765,63 @@ bool Map::CheckCollision(const Vector3& position, float radius) const {
         }
     }
 
+    // EnvObject collisions (solid objects only)
+    for (const auto& obj : envObjects_) {
+        BoundingBox box;
+        bool solid = true;
+        switch (obj.type) {
+        case EnvObjectType::CRATE: {
+            float s = 0.5f * obj.scale;
+            box.min = {obj.position.x - s, obj.position.y, obj.position.z - s};
+            box.max = {obj.position.x + s, obj.position.y + s * 2.0f, obj.position.z + s};
+            break;
+        }
+        case EnvObjectType::BARREL: {
+            float r = 0.35f * obj.scale;
+            float h = 1.0f * obj.scale;
+            box.min = {obj.position.x - r, obj.position.y, obj.position.z - r};
+            box.max = {obj.position.x + r, obj.position.y + h, obj.position.z + r};
+            break;
+        }
+        case EnvObjectType::SANDBAG_WALL:
+        case EnvObjectType::METAL_BARRIER:
+        case EnvObjectType::CONCRETE_BARRIER: {
+            float w = 1.5f * obj.scale, h = 0.8f * obj.scale, d = 0.4f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::GENERATOR: {
+            float w = 0.8f * obj.scale, h = 1.0f * obj.scale, d = 0.5f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::WATER_TANK: {
+            float r = 0.6f * obj.scale;
+            float h = 1.5f * obj.scale;
+            box.min = {obj.position.x - r, obj.position.y, obj.position.z - r};
+            box.max = {obj.position.x + r, obj.position.y + h, obj.position.z + r};
+            break;
+        }
+        default:
+            solid = false;
+            break;
+        }
+        if (!solid) continue;
+
+        if (CheckCollisionBoxSphere(box, position, radius)) {
+            return true;
+        }
+    }
+
     return false;
 }
 
 Vector3 Map::ResolveCollision(const Vector3& position, float radius) const {
     Vector3 resolved = position;
 
-    // Wall resolution
+    // Wall resolution - push player out using minimum penetration axis
     for (const auto& wall : walls_) {
         Vector3 center = {
             (wall.start.x + wall.end.x) * 0.5f,
@@ -1784,24 +1834,42 @@ Vector3 Map::ResolveCollision(const Vector3& position, float radius) const {
             (wall.end.z - wall.start.z) * (wall.end.z - wall.start.z)
         );
 
+        float halfLen = length * 0.5f;
+        float halfThick = wall.thickness * 0.5f;
+
         BoundingBox box = {
-            {center.x - length * 0.5f, 0, center.z - wall.thickness * 0.5f},
-            {center.x + length * 0.5f, wall.height, center.z + wall.thickness * 0.5f}
+            {center.x - halfLen, 0, center.z - halfThick},
+            {center.x + halfLen, wall.height, center.z + halfThick}
         };
 
         if (CheckCollisionBoxSphere(box, resolved, radius)) {
-            Vector3 dir = {resolved.x - center.x, 0, resolved.z - center.z};
-            float dist = sqrtf(dir.x * dir.x + dir.z * dir.z);
-            if (dist > 0.01f) {
-                dir.x /= dist;
-                dir.z /= dist;
-                resolved.x = center.x + dir.x * (length * 0.5f + radius + 0.1f);
-                resolved.z = center.z + dir.z * (wall.thickness * 0.5f + radius + 0.1f);
+            // Skip if player is above the wall
+            if (resolved.y > wall.height) continue;
+
+            // Find minimum penetration axis to push out correctly
+            float dx_min = resolved.x - (box.min.x - radius);
+            float dx_max = (box.max.x + radius) - resolved.x;
+            float dz_min = resolved.z - (box.min.z - radius);
+            float dz_max = (box.max.z + radius) - resolved.z;
+
+            float minPen = 999999.0f;
+            int minAxis = 0;
+
+            if (dx_min > 0 && dx_min < minPen) { minPen = dx_min; minAxis = 0; }
+            if (dx_max > 0 && dx_max < minPen) { minPen = dx_max; minAxis = 1; }
+            if (dz_min > 0 && dz_min < minPen) { minPen = dz_min; minAxis = 2; }
+            if (dz_max > 0 && dz_max < minPen) { minPen = dz_max; minAxis = 3; }
+
+            switch (minAxis) {
+            case 0: resolved.x = box.min.x - radius - 0.01f; break;
+            case 1: resolved.x = box.max.x + radius + 0.01f; break;
+            case 2: resolved.z = box.min.z - radius - 0.01f; break;
+            case 3: resolved.z = box.max.z + radius + 0.01f; break;
             }
         }
     }
 
-    // Platform side resolution
+    // Platform side resolution (only when below platform surface)
     for (const auto& plat : platforms_) {
         if (resolved.y < plat.elevation) {
             BoundingBox box = {
@@ -1809,19 +1877,30 @@ Vector3 Map::ResolveCollision(const Vector3& position, float radius) const {
                 {plat.center.x + plat.width * 0.5f, plat.elevation, plat.center.z + plat.depth * 0.5f}
             };
             if (CheckCollisionBoxSphere(box, resolved, radius)) {
-                Vector3 dir = {resolved.x - plat.center.x, 0, resolved.z - plat.center.z};
-                float dist = sqrtf(dir.x * dir.x + dir.z * dir.z);
-                if (dist > 0.01f) {
-                    dir.x /= dist;
-                    dir.z /= dist;
-                    resolved.x = plat.center.x + dir.x * (plat.width * 0.5f + radius + 0.1f);
-                    resolved.z = plat.center.z + dir.z * (plat.depth * 0.5f + radius + 0.1f);
+                float dx_min = resolved.x - (box.min.x - radius);
+                float dx_max = (box.max.x + radius) - resolved.x;
+                float dz_min = resolved.z - (box.min.z - radius);
+                float dz_max = (box.max.z + radius) - resolved.z;
+
+                float minPen = 999999.0f;
+                int minAxis = 0;
+
+                if (dx_min > 0 && dx_min < minPen) { minPen = dx_min; minAxis = 0; }
+                if (dx_max > 0 && dx_max < minPen) { minPen = dx_max; minAxis = 1; }
+                if (dz_min > 0 && dz_min < minPen) { minPen = dz_min; minAxis = 2; }
+                if (dz_max > 0 && dz_max < minPen) { minPen = dz_max; minAxis = 3; }
+
+                switch (minAxis) {
+                case 0: resolved.x = box.min.x - radius - 0.01f; break;
+                case 1: resolved.x = box.max.x + radius + 0.01f; break;
+                case 2: resolved.z = box.min.z - radius - 0.01f; break;
+                case 3: resolved.z = box.max.z + radius + 0.01f; break;
                 }
             }
         }
     }
 
-    // Pillar resolution
+    // Pillar resolution - push out radially from pillar center
     for (const auto& pillar : pillars_) {
         Vector3 dir = {resolved.x - pillar.base.x, 0, resolved.z - pillar.base.z};
         float dist = sqrtf(dir.x * dir.x + dir.z * dir.z);
@@ -1829,8 +1908,79 @@ Vector3 Map::ResolveCollision(const Vector3& position, float radius) const {
             if (dist > 0.01f) {
                 dir.x /= dist;
                 dir.z /= dist;
-                resolved.x = pillar.base.x + dir.x * (pillar.radius + radius + 0.1f);
-                resolved.z = pillar.base.z + dir.z * (pillar.radius + radius + 0.1f);
+                resolved.x = pillar.base.x + dir.x * (pillar.radius + radius + 0.05f);
+                resolved.z = pillar.base.z + dir.z * (pillar.radius + radius + 0.05f);
+            } else {
+                resolved.x = pillar.base.x + pillar.radius + radius + 0.05f;
+            }
+        }
+    }
+
+    // EnvObject collisions (approximate as boxes)
+    for (const auto& obj : envObjects_) {
+        BoundingBox box;
+        bool solid = true;
+        switch (obj.type) {
+        case EnvObjectType::CRATE: {
+            float s = 0.5f * obj.scale;
+            box.min = {obj.position.x - s, obj.position.y, obj.position.z - s};
+            box.max = {obj.position.x + s, obj.position.y + s * 2.0f, obj.position.z + s};
+            break;
+        }
+        case EnvObjectType::BARREL: {
+            float r = 0.35f * obj.scale;
+            float h = 1.0f * obj.scale;
+            box.min = {obj.position.x - r, obj.position.y, obj.position.z - r};
+            box.max = {obj.position.x + r, obj.position.y + h, obj.position.z + r};
+            break;
+        }
+        case EnvObjectType::SANDBAG_WALL:
+        case EnvObjectType::METAL_BARRIER:
+        case EnvObjectType::CONCRETE_BARRIER: {
+            float w = 1.5f * obj.scale, h = 0.8f * obj.scale, d = 0.4f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::GENERATOR: {
+            float w = 0.8f * obj.scale, h = 1.0f * obj.scale, d = 0.5f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::WATER_TANK: {
+            float r = 0.6f * obj.scale;
+            float h = 1.5f * obj.scale;
+            box.min = {obj.position.x - r, obj.position.y, obj.position.z - r};
+            box.max = {obj.position.x + r, obj.position.y + h, obj.position.z + r};
+            break;
+        }
+        default:
+            solid = false;
+            break;
+        }
+
+        if (!solid) continue;
+
+        if (CheckCollisionBoxSphere(box, resolved, radius)) {
+            float dx_min = resolved.x - (box.min.x - radius);
+            float dx_max = (box.max.x + radius) - resolved.x;
+            float dz_min = resolved.z - (box.min.z - radius);
+            float dz_max = (box.max.z + radius) - resolved.z;
+
+            float minPen = 999999.0f;
+            int minAxis = 0;
+
+            if (dx_min > 0 && dx_min < minPen) { minPen = dx_min; minAxis = 0; }
+            if (dx_max > 0 && dx_max < minPen) { minPen = dx_max; minAxis = 1; }
+            if (dz_min > 0 && dz_min < minPen) { minPen = dz_min; minAxis = 2; }
+            if (dz_max > 0 && dz_max < minPen) { minPen = dz_max; minAxis = 3; }
+
+            switch (minAxis) {
+            case 0: resolved.x = box.min.x - radius - 0.01f; break;
+            case 1: resolved.x = box.max.x + radius + 0.01f; break;
+            case 2: resolved.z = box.min.z - radius - 0.01f; break;
+            case 3: resolved.z = box.max.z + radius + 0.01f; break;
             }
         }
     }
@@ -1839,6 +1989,109 @@ Vector3 Map::ResolveCollision(const Vector3& position, float radius) const {
     resolved.z = std::clamp(resolved.z, -bounds_.z + radius, bounds_.z - radius);
 
     return resolved;
+}
+
+float Map::GetGroundHeight(const Vector3& position, float playerRadius) const {
+    float groundY = 0.0f;  // Default ground level
+
+    // Check platforms - if player is above or at the top surface of a platform,
+    // that becomes their ground level
+    for (const auto& plat : platforms_) {
+        // Check if player's XZ position is within the platform's horizontal bounds
+        float halfW = plat.width * 0.5f + playerRadius;
+        float halfD = plat.depth * 0.5f + playerRadius;
+        if (position.x >= plat.center.x - halfW && position.x <= plat.center.x + halfW &&
+            position.z >= plat.center.z - halfD && position.z <= plat.center.z + halfD) {
+            // Player is within platform XZ bounds
+            // If they're near or above the platform surface, use platform elevation as ground
+            if (position.y >= plat.elevation - 0.3f) {
+                if (plat.elevation > groundY) {
+                    groundY = plat.elevation;
+                }
+            }
+        }
+    }
+
+    // Check stairs - approximate as a slope
+    for (const auto& stair : staircases_) {
+        // Transform player position into staircase local space
+        float dx = position.x - stair.position.x;
+        float dz = position.z - stair.position.z;
+        float cosR = cosf(-stair.rotation);
+        float sinR = sinf(-stair.rotation);
+        float localX = dx * cosR - dz * sinR;
+        float localZ = dx * sinR + dz * cosR;
+
+        // Check if player is within the staircase bounds
+        float halfW = stair.width * 0.5f + playerRadius;
+        if (localX >= -halfW && localX <= halfW &&
+            localZ >= -playerRadius && localZ <= stair.totalDepth + playerRadius) {
+            // Calculate height at this point on the staircase
+            float t = std::clamp(localZ / stair.totalDepth, 0.0f, 1.0f);
+            float stairY = stair.position.y + stair.totalHeight * t;
+
+            // If player is near or above this stair height
+            if (position.y >= stairY - 0.5f && stairY > groundY) {
+                groundY = stairY;
+            }
+        }
+    }
+
+    // Check env objects that can be stood on top of
+    for (const auto& obj : envObjects_) {
+        float topY = 0.0f;
+        bool canStandOn = false;
+        float halfW = 0.0f, halfD = 0.0f;
+
+        switch (obj.type) {
+        case EnvObjectType::CRATE: {
+            float s = 0.5f * obj.scale;
+            topY = obj.position.y + s * 2.0f;
+            halfW = s + playerRadius;
+            halfD = s + playerRadius;
+            canStandOn = true;
+            break;
+        }
+        case EnvObjectType::METAL_BARRIER:
+        case EnvObjectType::CONCRETE_BARRIER: {
+            float w = 1.5f * obj.scale, h = 0.8f * obj.scale, d = 0.4f * obj.scale;
+            topY = obj.position.y + h;
+            halfW = w * 0.5f + playerRadius;
+            halfD = d * 0.5f + playerRadius;
+            canStandOn = true;
+            break;
+        }
+        case EnvObjectType::GENERATOR: {
+            float w = 0.8f * obj.scale, h = 1.0f * obj.scale, d = 0.5f * obj.scale;
+            topY = obj.position.y + h;
+            halfW = w * 0.5f + playerRadius;
+            halfD = d * 0.5f + playerRadius;
+            canStandOn = true;
+            break;
+        }
+        case EnvObjectType::WATER_TANK: {
+            float r = 0.6f * obj.scale;
+            topY = obj.position.y + 1.5f * obj.scale;
+            halfW = r + playerRadius;
+            halfD = r + playerRadius;
+            canStandOn = true;
+            break;
+        }
+        default:
+            break;
+        }
+
+        if (canStandOn) {
+            if (position.x >= obj.position.x - halfW && position.x <= obj.position.x + halfW &&
+                position.z >= obj.position.z - halfD && position.z <= obj.position.z + halfD) {
+                if (position.y >= topY - 0.3f && topY > groundY) {
+                    groundY = topY;
+                }
+            }
+        }
+    }
+
+    return groundY;
 }
 
 Vector3 Map::GetRandomSpawnPoint() const {

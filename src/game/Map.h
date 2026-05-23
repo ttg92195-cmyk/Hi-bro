@@ -176,6 +176,7 @@ public:
     RayCollision Raycast(const Ray& ray, float maxDistance) const;
     bool CheckCollision(const Vector3& position, float radius) const;
     Vector3 ResolveCollision(const Vector3& position, float radius) const;
+    float GetGroundHeight(const Vector3& position, float playerRadius = 0.4f) const;
 
     // === Spawn Points ===
     std::vector<Vector3>& GetSpawnPoints() { return spawnPositions_; }
