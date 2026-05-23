@@ -273,6 +273,9 @@ void Enemy::Render() {
         position_.z + cosf(rotation_.y) * wepFwd
     };
 
+    // Default weapon color
+    Color weaponColor = (Color){50, 50, 55, 255};
+
     // Try 3D model rendering first
     WeaponType enemyWeaponType = GetWeaponTypeForClass();
     bool modelRendered = false;
