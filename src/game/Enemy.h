@@ -72,6 +72,10 @@ public:
     static ModelManager* s_modelManager;
     static void SetModelManager(ModelManager* mgr) { s_modelManager = mgr; }
 
+    // === Static Map Pointer (for collision) ===
+    static class Map* s_map;
+    static void SetMap(class Map* m) { s_map = m; }
+
     // === Weapon Type for Model ===
     WeaponType GetWeaponTypeForClass() const;
 
@@ -126,7 +130,7 @@ private:
     // === Helpers ===
     void MoveTowards(const Vector3& target, float speed, float deltaTime);
     void LookAt(const Vector3& target);
-    void ShootAtPlayer(class Player* player);
+    void ShootAtPlayer(class Player* player, float deltaTime);
     Vector3 FindCoverPosition() const;
     Vector3 FindFlankPosition(class Player* player) const;
 };

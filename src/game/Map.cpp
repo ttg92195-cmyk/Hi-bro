@@ -722,15 +722,15 @@ void Map::Render() {
 // ============================================================================
 
 void Map::RenderSkybox() const {
-    // Draw sky as layered horizontal strips for a proper gradient effect
+    // Draw sky as a proper gradient background using horizontal quad strips
     float skyHeight = 50.0f;
     float skyRadius = 180.0f;
-    int strips = 20;
+    int strips = 24;
 
-    Color topColor = {5, 5, 25, 255};         // Deep space navy
-    Color midColor = {15, 20, 55, 255};        // Dark blue
-    Color horizonColor = {35, 40, 70, 255};    // Blue-grey horizon
-    Color groundHaze = {25, 25, 35, 255};      // Ground fog
+    Color topColor = {8, 8, 30, 255};          // Deep space navy
+    Color midColor = {20, 30, 70, 255};         // Dark blue
+    Color horizonColor = {50, 55, 85, 255};     // Blue-grey horizon with glow
+    Color groundHaze = {30, 30, 40, 255};       // Ground fog
 
     for (int i = 0; i < strips; i++) {
         float t = (float)i / strips;
@@ -758,13 +758,16 @@ void Map::RenderSkybox() const {
             c.a = 255;
         }
 
-        // Draw as a very large ring of quads around the scene
+        // Draw as solid quad strips - use higher alpha for proper visibility
         float rad = skyRadius;
-        DrawPlane({0, y, 0}, {rad * 2, rad * 2}, Fade(c, 0.04f));
+        DrawPlane({0, y, 0}, {rad * 2, rad * 2}, Fade(c, 0.85f));
     }
 
+    // Atmospheric glow at horizon line
+    DrawPlane({0, 2.0f, 0}, {bounds_.x * 3, 4.0f}, Fade((Color){40, 50, 80, 255}, 0.15f));
+
     // Subtle atmospheric haze near ground
-    DrawPlane({0, 0.3f, 0}, {bounds_.x * 3, bounds_.z * 3}, Fade((Color){20, 25, 35, 255}, 0.08f));
+    DrawPlane({0, 0.3f, 0}, {bounds_.x * 3, bounds_.z * 3}, Fade((Color){20, 25, 35, 255}, 0.12f));
 }
 
 // ============================================================================

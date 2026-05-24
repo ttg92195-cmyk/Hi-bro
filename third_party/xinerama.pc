@@ -1,0 +1,12 @@
+prefix=/home/z/my-project/repo/third_party
+exec_prefix=${prefix}
+libdir=${prefix}
+includedir=${prefix}/include
+
+Name: Xinerama
+Description: The Xinerama Library
+Version: 1.1.4
+Requires: xineramaproto
+Requires.private: x11 xext
+Cflags: -I${includedir}
+Libs: -L${libdir} -lXinerama

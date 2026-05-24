@@ -201,10 +201,19 @@ void Weapon::Update(float deltaTime) {
 }
 
 void Weapon::UpdateSpread(float deltaTime) {
+    // ADS recovers spread faster and reduces minimum spread
+    float effectiveBaseSpread = baseSpread_;
+    float effectiveRecoverySpeed = spreadRecoverySpeed_;
+
+    if (isAiming_) {
+        effectiveBaseSpread *= 0.35f;    // ADS minimum spread is 35% of hip-fire
+        effectiveRecoverySpeed *= 2.0f;  // ADS recovers spread twice as fast
+    }
+
     // Recover spread over time
-    if (currentSpread_ > baseSpread_) {
-        currentSpread_ -= spreadRecoverySpeed_ * deltaTime;
-        if (currentSpread_ < baseSpread_) currentSpread_ = baseSpread_;
+    if (currentSpread_ > effectiveBaseSpread) {
+        currentSpread_ -= effectiveRecoverySpeed * deltaTime;
+        if (currentSpread_ < effectiveBaseSpread) currentSpread_ = effectiveBaseSpread;
     }
 }
 

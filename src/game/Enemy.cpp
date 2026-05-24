@@ -18,6 +18,9 @@ namespace EOSShooter {
 // Static model manager pointer
 ModelManager* Enemy::s_modelManager = nullptr;
 
+// Static map pointer for collision
+Map* Enemy::s_map = nullptr;
+
 // ============================================================================
 // Construction
 // ============================================================================
@@ -122,6 +125,19 @@ void Enemy::Update(float deltaTime, Player* player) {
     if (position_.y < 0) {
         position_.y = 0;
         velocity_.y = 0;
+    }
+
+    // === Enemy collision with map geometry ===
+    if (s_map) {
+        float enemyRadius = 0.4f;
+        if (s_map->CheckCollision(position_, enemyRadius)) {
+            Vector3 resolved = s_map->ResolveCollision(position_, enemyRadius);
+            position_ = resolved;
+        }
+        // Clamp to map bounds
+        Vector3 bounds = s_map->GetBounds();
+        position_.x = std::clamp(position_.x, -bounds.x + enemyRadius, bounds.x - enemyRadius);
+        position_.z = std::clamp(position_.z, -bounds.z + enemyRadius, bounds.z - enemyRadius);
     }
 }
 
@@ -302,7 +318,7 @@ void Enemy::Render() {
                 scale.z *= 1.3f;
             }
 
-            DrawModelEx(*model, finalPos, cfg.rotationAxis, totalAngle, scale, weaponColor);
+            DrawModelEx(*model, finalPos, cfg.rotationAxis, totalAngle, scale, (Color){220, 220, 230, 255});
             modelRendered = true;
         }
     }
@@ -529,7 +545,7 @@ void Enemy::UpdateAttack(float deltaTime, Player* player) {
     LookAt(player->GetPosition());
 
     // Shoot at player
-    ShootAtPlayer(player);
+    ShootAtPlayer(player, deltaTime);
 
     // If player moved out of attack range, chase
     if (dist > attackRange_ * 1.2f) {
@@ -659,8 +675,27 @@ void Enemy::MoveTowards(const Vector3& target, float speed, float deltaTime) {
     dir.x /= dist;
     dir.z /= dist;
 
-    position_.x += dir.x * speed * deltaTime;
-    position_.z += dir.z * speed * deltaTime;
+    Vector3 newPos = {
+        position_.x + dir.x * speed * deltaTime,
+        position_.y,
+        position_.z + dir.z * speed * deltaTime
+    };
+
+    // Check collision with map geometry
+    if (s_map) {
+        float enemyRadius = 0.4f;
+        if (s_map->CheckCollision(newPos, enemyRadius)) {
+            Vector3 resolved = s_map->ResolveCollision(newPos, enemyRadius);
+            newPos = resolved;
+        }
+        // Clamp to map bounds
+        Vector3 bounds = s_map->GetBounds();
+        newPos.x = std::clamp(newPos.x, -bounds.x + enemyRadius, bounds.x - enemyRadius);
+        newPos.z = std::clamp(newPos.z, -bounds.z + enemyRadius, bounds.z - enemyRadius);
+    }
+
+    position_.x = newPos.x;
+    position_.z = newPos.z;
 }
 
 void Enemy::LookAt(const Vector3& target) {
@@ -672,8 +707,8 @@ void Enemy::LookAt(const Vector3& target) {
     rotation_.y = atan2f(dir.x, dir.z);
 }
 
-void Enemy::ShootAtPlayer(Player* player) {
-    fireTimer_ += 1.0f / 60.0f; // Assuming 60fps update rate
+void Enemy::ShootAtPlayer(Player* player, float deltaTime) {
+    fireTimer_ += deltaTime;
 
     if (fireTimer_ >= 1.0f / fireRate_) {
         fireTimer_ = 0.0f;

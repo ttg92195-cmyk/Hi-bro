@@ -601,6 +601,8 @@ Weapon* Player::GetWeapon(int slot) {
 void Player::UpdateWeapon(float deltaTime) {
     Weapon* weapon = GetCurrentWeapon();
     if (weapon) {
+        // Pass ADS state to weapon for spread reduction
+        weapon->SetAiming(isAiming_);
         weapon->Update(deltaTime);
 
         // Auto-reload when empty

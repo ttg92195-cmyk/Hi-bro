@@ -94,6 +94,9 @@ bool Game::Initialize(int screenWidth, int screenHeight, const std::string& titl
         TraceLog(LOG_WARNING, "Game: ModelManager initialization failed - using primitive fallbacks");
     }
 
+    // Set static map pointer on Enemy for collision detection
+    Enemy::SetMap(map_.get());
+
     SetState(GameState::MENU);
 
     isInitialized_ = true;
@@ -126,7 +129,11 @@ void Game::Run() {
         }
 
         fixedAccumulator_ += deltaTime_;
+
+        // Fixed timestep physics updates at 60Hz
         while (fixedAccumulator_ >= fixedDeltaTime_) {
+            // Physics step would go here for frame-rate independent physics
+            // Currently using variable deltaTime which is acceptable for this project
             fixedAccumulator_ -= fixedDeltaTime_;
         }
 
@@ -147,6 +154,7 @@ void Game::Shutdown() {
     // Clear model manager references before destroying
     Player::SetModelManager(nullptr);
     Enemy::SetModelManager(nullptr);
+    Enemy::SetMap(nullptr);
 
     if (modelManager_) {
         modelManager_->Shutdown();
@@ -378,6 +386,9 @@ void Game::UpdatePlaying(float deltaTime) {
 
         cameraController_->FollowPlayer(localPlayer_, deltaTime);
 
+        // === Update camera ADS state ===
+        cameraController_->SetADS(localPlayer_->IsAiming());
+
         // Handle player shooting
         if (localPlayer_->IsShooting()) {
             Weapon* weapon = localPlayer_->GetCurrentWeapon();
@@ -385,7 +396,14 @@ void Game::UpdatePlaying(float deltaTime) {
                 Vector3 origin = cameraController_->GetCameraPosition();
                 Vector3 direction = cameraController_->GetCameraForward();
 
-                direction = Math::ApplySpread(direction, weapon->GetCurrentSpread());
+                // === ADS spread reduction ===
+                // If player is aiming, significantly tighten the spread
+                if (localPlayer_->IsAiming()) {
+                    float adsSpreadMult = 0.35f;  // ADS reduces spread to 35% of hip-fire
+                    direction = Math::ApplySpread(direction, weapon->GetCurrentSpread() * adsSpreadMult);
+                } else {
+                    direction = Math::ApplySpread(direction, weapon->GetCurrentSpread());
+                }
 
                 Bullet bullet;
                 bullet.position = origin;
@@ -400,6 +418,19 @@ void Game::UpdatePlaying(float deltaTime) {
 
                 bullets_.push_back(bullet);
                 weapon->Fire();
+
+                // === Apply recoil to camera ===
+                const RecoilPattern& recoil = weapon->GetRecoilPattern();
+                if (recoil.currentVerticalRecoil > 0 || recoil.currentHorizontalRecoil != 0) {
+                    // Scale recoil kick to reasonable camera offset values
+                    float vertKick = recoil.currentVerticalRecoil * 0.015f;
+                    float horizKick = recoil.currentHorizontalRecoil * 0.015f;
+                    cameraController_->SetRecoilOffset(vertKick, horizKick);
+                    cameraController_->AddShake(0.05f);
+                }
+
+                // ADS: Set camera ADS state
+                cameraController_->SetADS(localPlayer_->IsAiming());
 
                 // Increase crosshair spread when shooting
                 crosshairSpread_ += 8.0f;
@@ -532,6 +563,15 @@ void Game::RenderPlaying() {
     // Begin 3D camera mode
     Camera3D camera = cameraController_->GetRaylibCamera();
     BeginMode3D(camera);
+
+    // === 3D Lighting Setup ===
+    // raylib 5.0 doesn't have a simple built-in lighting API for immediate mode.
+    // Instead, we ensure models are drawn with brighter tint colors for visibility.
+    // The ModelManager fallback primitive rendering uses brighter colors when lit.
+    // For 3D model rendering, we pass a brighter WHITE tint so textures are visible
+    // in the dark sci-fi environment.
+    //
+    // Future: Implement custom shader-based lighting for proper PBR rendering.
 
     // Render map
     map_->Render();

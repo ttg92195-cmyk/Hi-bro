@@ -128,6 +128,10 @@ public:
     void RefillAmmo();
     void SetDamage(float dmg) { baseDamage_ = dmg; RecalculateStats(); }
 
+    // === ADS State ===
+    void SetAiming(bool aiming) { isAiming_ = aiming; }
+    bool IsAiming() const { return isAiming_; }
+
 private:
     // === Identity ===
     WeaponType type_;
@@ -164,6 +168,7 @@ private:
     bool isFirstShot_ = true;
     int burstCount_ = 0;
     int burstSize_ = 3;
+    bool isAiming_ = false;     // ADS state for spread reduction
 
     // === Recoil ===
     RecoilPattern recoil_;
