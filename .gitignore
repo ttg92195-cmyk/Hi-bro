@@ -39,9 +39,7 @@ third_party/eos-sdk/
 # Raylib (submodule or cloned)
 third_party/raylib/
 
-# Assets that are too large for git
-assets/models/*.glb
-assets/models/*.gltf
+# Large asset backups (but keep .glb models in git for CI)
 assets/textures/*.png.bak
 
 # Python

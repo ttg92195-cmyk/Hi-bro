@@ -106,7 +106,7 @@ void ModelManager::SetDefaultConfigs() {
         {0.5f, 0.5f, 0.5f},         // scale (larger for FPS view)
         {0.0f, 1.0f, 0.0f},         // rotationAxis
         -90.0f,                       // rotationAngle
-        {0.25f, -0.25f, -0.4f},     // rightOffset
+        {0.25f, -0.25f, 0.5f},      // rightOffset (right, down, FORWARD)
         0.003f,                       // bobAmplitude
         10.0f                         // bobSpeed
     };
@@ -124,7 +124,7 @@ void ModelManager::SetDefaultConfigs() {
         {0.45f, 0.45f, 0.45f},
         {0.0f, 1.0f, 0.0f},
         -90.0f,
-        {0.25f, -0.22f, -0.4f},
+        {0.25f, -0.22f, 0.45f},     // rightOffset (right, down, FORWARD)
         0.004f,   // faster bob for SMG
         12.0f
     };
@@ -142,7 +142,7 @@ void ModelManager::SetDefaultConfigs() {
         {0.5f, 0.5f, 0.5f},
         {0.0f, 1.0f, 0.0f},
         -90.0f,
-        {0.28f, -0.28f, -0.45f},   // slightly more to the right for shotgun
+        {0.28f, -0.28f, 0.5f},     // rightOffset (right, down, FORWARD)
         0.002f,                      // slower bob for heavy weapon
         8.0f
     };
@@ -160,7 +160,7 @@ void ModelManager::SetDefaultConfigs() {
         {0.55f, 0.55f, 0.55f},
         {0.0f, 1.0f, 0.0f},
         -90.0f,
-        {0.22f, -0.25f, -0.5f},    // more centered for aiming
+        {0.22f, -0.25f, 0.55f},    // rightOffset (right, down, FORWARD)
         0.001f,                      // minimal bob for precision weapon
         6.0f
     };
@@ -178,7 +178,7 @@ void ModelManager::SetDefaultConfigs() {
         {0.7f, 0.7f, 0.7f},
         {0.0f, 1.0f, 0.0f},
         -90.0f,
-        {0.2f, -0.18f, -0.35f},    // closer to camera
+        {0.2f, -0.18f, 0.4f},      // rightOffset (right, down, FORWARD)
         0.004f,
         11.0f
     };
@@ -196,7 +196,7 @@ void ModelManager::SetDefaultConfigs() {
         {0.45f, 0.45f, 0.45f},
         {0.0f, 1.0f, 0.0f},
         -90.0f,
-        {0.28f, -0.3f, -0.5f},     // held lower and to the side
+        {0.28f, -0.3f, 0.5f},      // rightOffset (right, down, FORWARD)
         0.001f,                      // minimal bob for heavy weapon
         5.0f
     };
@@ -214,7 +214,7 @@ void ModelManager::SetDefaultConfigs() {
         {1.0f, 1.0f, 1.0f},
         {0.0f, 1.0f, 0.0f},
         0.0f,
-        {0.2f, -0.15f, -0.3f},
+        {0.2f, -0.15f, 0.35f},     // rightOffset (right, down, FORWARD)
         0.005f,
         14.0f
     };

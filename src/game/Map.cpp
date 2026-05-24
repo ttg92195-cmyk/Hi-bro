@@ -1668,6 +1668,10 @@ void Map::SpawnPickups() {
         Pickup p; p.type = PickupType::WEAPON; p.position = {0, 0.5f, 30}; p.weaponType = WeaponType::RPG;
         pickups_.push_back(p);
     }
+    {
+        Pickup p; p.type = PickupType::WEAPON; p.position = {15, 0.5f, -20}; p.weaponType = WeaponType::SMG;
+        pickups_.push_back(p);
+    }
 }
 
 // ============================================================================
