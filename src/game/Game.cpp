@@ -802,6 +802,77 @@ void Game::RenderHUD() {
     // EOS status
     DrawText(TextFormat("EOS: %s", eosManager_->IsLoggedIn() ? "Connected" : "Offline"),
              10, screenHeight_ - 20, 12, eosManager_->IsLoggedIn() ? Fade(GREEN, 0.6f) : Fade(RED, 0.6f));
+
+    // === Tactical Military HUD (Warzone Fortress & Military maps) ===
+    if (localPlayer_ && map_) {
+        Vector3 pos = localPlayer_->GetPosition();
+        Vector3 rot = localPlayer_->GetRotation();
+        Vector3 bounds = map_->GetBounds();
+        float hudAlpha = 0.7f;
+
+        // --- Compass (top center) ---
+        float compassX = sw * 0.5f;
+        float compassY = 25.0f;
+        float compassW = 200.0f;
+        float compassH = 20.0f;
+
+        // Compass background
+        DrawRectangle((int)(compassX - compassW * 0.5f) - 2, (int)(compassY - compassH * 0.5f) - 2,
+                      (int)compassW + 4, (int)compassH + 4, Fade((Color){10, 10, 15, 255}, 0.7f));
+        DrawRectangleLinesEx({compassX - compassW * 0.5f - 2, compassY - compassH * 0.5f - 2, compassW + 4, compassH + 4},
+                             1, Fade((Color){180, 50, 30, 255}, 0.5f * hudAlpha));
+
+        // Compass tick marks and cardinal directions
+        float yaw = rot.y; // Player yaw in radians
+        float yawDeg = yaw * 180.0f / PI;
+        const char* cardinal = "N";
+        if (yawDeg >= -22.5f && yawDeg < 22.5f) cardinal = "N";
+        else if (yawDeg >= 22.5f && yawDeg < 67.5f) cardinal = "NE";
+        else if (yawDeg >= 67.5f && yawDeg < 112.5f) cardinal = "E";
+        else if (yawDeg >= 112.5f && yawDeg < 157.5f) cardinal = "SE";
+        else if (yawDeg >= 157.5f || yawDeg < -157.5f) cardinal = "S";
+        else if (yawDeg >= -157.5f && yawDeg < -112.5f) cardinal = "SW";
+        else if (yawDeg >= -112.5f && yawDeg < -67.5f) cardinal = "W";
+        else if (yawDeg >= -67.5f && yawDeg < -22.5f) cardinal = "NW";
+
+        Color compassColor = {200, 60, 40, 255};
+        DrawText(cardinal, (int)compassX - MeasureText(cardinal, 14) / 2, (int)(compassY - 7), 14, Fade(compassColor, hudAlpha));
+        // Degree readout
+        DrawText(TextFormat("%.0f deg", yawDeg), (int)(compassX + 30), (int)(compassY - 6), 10, Fade(WHITE, 0.4f));
+
+        // --- Grid Coordinates (bottom-left, above health) ---
+        float gridX = pad;
+        float gridY = sh - pad - barH - barH - 6 - 8 - 40;
+        // Military grid: divide map into sectors
+        int sectorX = (int)((pos.x + bounds.x) / (bounds.x * 2.0f / 8.0f));
+        int sectorZ = (int)((pos.z + bounds.z) / (bounds.z * 2.0f / 8.0f));
+        sectorX = std::clamp(sectorX, 0, 7);
+        sectorZ = std::clamp(sectorZ, 0, 7);
+        const char* sectorLetters = "ABCDEFGH";
+
+        // Grid coordinate panel
+        DrawRectangle((int)gridX - 2, (int)gridY - 2, 140, 36, Fade((Color){10, 10, 15, 255}, 0.6f));
+        DrawRectangleLinesEx({gridX - 2, gridY - 2, 140, 36}, 1, Fade((Color){180, 50, 30, 255}, 0.4f * hudAlpha));
+
+        // Sector identifier (e.g., "SECTOR C-5")
+        DrawText(TextFormat("SECTOR %c-%d", sectorLetters[sectorX], sectorZ + 1),
+                 (int)gridX + 4, (int)gridY + 2, 14, Fade((Color){200, 60, 40, 255}, hudAlpha));
+        // Precise coordinates
+        DrawText(TextFormat("GRID %03.0f/%03.0f", pos.x + bounds.x, pos.z + bounds.z),
+                 (int)gridX + 4, (int)gridY + 18, 10, Fade(WHITE, 0.4f));
+
+        // --- Kill count panel (top-left) ---
+        float killPanelX = pad;
+        float killPanelY = pad + 20;
+        DrawRectangle((int)killPanelX - 2, (int)killPanelY - 2, 110, 30, Fade((Color){10, 10, 15, 255}, 0.6f));
+        DrawRectangleLinesEx({killPanelX - 2, killPanelY - 2, 110, 30}, 1, Fade((Color){180, 50, 30, 255}, 0.4f * hudAlpha));
+        DrawText(TextFormat("KILLS: %d", localPlayer_->GetKills()),
+                 (int)killPanelX + 4, (int)killPanelY + 5, 14, Fade((Color){200, 60, 40, 255}, hudAlpha));
+
+        // --- Scan line effect (subtle) ---
+        float scanY = fmodf(menuAnimTime_ * 100.0f, sh);
+        DrawRectangle(0, (int)scanY, (int)sw, 1, Fade((Color){180, 50, 30, 255}, 0.04f));
+    }
 }
 
 // ============================================================================
@@ -981,7 +1052,7 @@ void Game::RenderMenu() {
         (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(GetMousePosition(), { (float)btnX, 250.0f, (float)btnW, (float)btnH }))) {
         GameConfig config;
         config.mode = GameMode::COOP_SURVIVAL;
-        config.mapName = "urban_warehouse";
+        config.mapName = "warzone_fortress";
         StartGame(config);
     }
 
@@ -1021,7 +1092,7 @@ void Game::RenderMenu() {
         if (IsKeyPressed(KEY_ENTER) || (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && startHover)) {
             GameConfig config;
             config.mode = GameMode::COOP_SURVIVAL;
-            config.mapName = "urban_warehouse";
+            config.mapName = "warzone_fortress";
             StartGame(config);
         }
     }

@@ -100,7 +100,18 @@ enum class EnvObjectType {
     PALLET,          // Wooden pallet
     GENERATOR,       // Industrial generator
     WATER_TANK,      // Cylindrical water tank
-    SATELLITE_DISH   // Satellite dish
+    SATELLITE_DISH,  // Satellite dish
+    // === Military objects ===
+    TANK_WRECK,      // Destroyed tank (large cover)
+    HUMVEE_WRECK,    // Destroyed Humvee (medium cover)
+    HELICOPTER_WRECK,// Downed helicopter
+    BUNKER,          // Underground concrete bunker
+    WATCHTOWER,      // Military watchtower (climbable)
+    TRENCH,          // Ground trench (sunken cover)
+    CRATER,          // Bomb crater (sunken area)
+    BARBED_WIRE,     // Barbed wire obstacle
+    SANDBAG_FORT,    // Large sandbag fortification
+    MILITARY_CRATE   // Military supply crate
 };
 
 struct EnvObject {
@@ -252,6 +263,7 @@ private:
     void GenerateUrbanWarehouse();
     void GenerateDesertOutpost();
     void GenerateArcticBase();
+    void GenerateWarzoneFortress();
 
     // === Render Helpers ===
     void RenderFloor() const;
@@ -278,6 +290,17 @@ private:
     void RenderGenerator(const EnvObject& obj) const;
     void RenderWaterTank(const EnvObject& obj) const;
     void RenderSatelliteDish(const EnvObject& obj) const;
+    // === Military object renderers ===
+    void RenderTankWreck(const EnvObject& obj) const;
+    void RenderHumveeWreck(const EnvObject& obj) const;
+    void RenderHelicopterWreck(const EnvObject& obj) const;
+    void RenderBunker(const EnvObject& obj) const;
+    void RenderWatchtower(const EnvObject& obj) const;
+    void RenderTrench(const EnvObject& obj) const;
+    void RenderCrater(const EnvObject& obj) const;
+    void RenderBarbedWire(const EnvObject& obj) const;
+    void RenderSandbagFort(const EnvObject& obj) const;
+    void RenderMilitaryCrate(const EnvObject& obj) const;
 };
 
 } // namespace EOSShooter

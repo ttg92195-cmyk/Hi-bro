@@ -77,6 +77,8 @@ bool Map::Load(const std::string& mapName) {
         GenerateDesertOutpost();
     } else if (mapName == "arctic_base") {
         GenerateArcticBase();
+    } else if (mapName == "warzone_fortress") {
+        GenerateWarzoneFortress();
     } else {
         GenerateUrbanWarehouse();
     }
@@ -1253,6 +1255,17 @@ void Map::RenderEnvObjects() const {
         case EnvObjectType::GENERATOR:        RenderGenerator(obj); break;
         case EnvObjectType::WATER_TANK:       RenderWaterTank(obj); break;
         case EnvObjectType::SATELLITE_DISH:   RenderSatelliteDish(obj); break;
+        // Military objects
+        case EnvObjectType::TANK_WRECK:        RenderTankWreck(obj); break;
+        case EnvObjectType::HUMVEE_WRECK:      RenderHumveeWreck(obj); break;
+        case EnvObjectType::HELICOPTER_WRECK:  RenderHelicopterWreck(obj); break;
+        case EnvObjectType::BUNKER:            RenderBunker(obj); break;
+        case EnvObjectType::WATCHTOWER:        RenderWatchtower(obj); break;
+        case EnvObjectType::TRENCH:            RenderTrench(obj); break;
+        case EnvObjectType::CRATER:            RenderCrater(obj); break;
+        case EnvObjectType::BARBED_WIRE:       RenderBarbedWire(obj); break;
+        case EnvObjectType::SANDBAG_FORT:      RenderSandbagFort(obj); break;
+        case EnvObjectType::MILITARY_CRATE:    RenderMilitaryCrate(obj); break;
         }
     }
 }
@@ -1814,6 +1827,65 @@ bool Map::CheckCollision(const Vector3& position, float radius) const {
             box.max = {obj.position.x + r, obj.position.y + h, obj.position.z + r};
             break;
         }
+        // Military objects
+        case EnvObjectType::TANK_WRECK: {
+            float w = 3.5f * obj.scale, h = 1.8f * obj.scale, d = 5.0f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::HUMVEE_WRECK: {
+            float w = 2.0f * obj.scale, h = 1.5f * obj.scale, d = 3.5f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::HELICOPTER_WRECK: {
+            float w = 4.0f * obj.scale, h = 2.0f * obj.scale, d = 5.0f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::BUNKER: {
+            float w = 5.0f * obj.scale, h = 2.5f * obj.scale, d = 4.0f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::WATCHTOWER: {
+            float r = 1.2f * obj.scale, h = 8.0f * obj.scale;
+            box.min = {obj.position.x - r, obj.position.y, obj.position.z - r};
+            box.max = {obj.position.x + r, obj.position.y + h, obj.position.z + r};
+            break;
+        }
+        case EnvObjectType::TRENCH: {
+            // Trench is sunken - no collision (player walks inside)
+            solid = false;
+            break;
+        }
+        case EnvObjectType::CRATER: {
+            // Crater is sunken - no collision (player walks inside)
+            solid = false;
+            break;
+        }
+        case EnvObjectType::BARBED_WIRE: {
+            float w = 3.0f * obj.scale, h = 1.0f * obj.scale, d = 0.3f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::SANDBAG_FORT: {
+            float w = 4.0f * obj.scale, h = 1.5f * obj.scale, d = 2.0f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::MILITARY_CRATE: {
+            float s = 0.6f * obj.scale;
+            box.min = {obj.position.x - s, obj.position.y, obj.position.z - s};
+            box.max = {obj.position.x + s, obj.position.y + s * 2.0f, obj.position.z + s};
+            break;
+        }
         default:
             solid = false;
             break;
@@ -1946,6 +2018,59 @@ Vector3 Map::ResolveCollision(const Vector3& position, float radius) const {
             float h = 1.5f * obj.scale;
             box.min = {obj.position.x - r, obj.position.y, obj.position.z - r};
             box.max = {obj.position.x + r, obj.position.y + h, obj.position.z + r};
+            break;
+        }
+        // Military objects (same dimensions as CheckCollision)
+        case EnvObjectType::TANK_WRECK: {
+            float w = 3.5f * obj.scale, h = 1.8f * obj.scale, d = 5.0f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::HUMVEE_WRECK: {
+            float w = 2.0f * obj.scale, h = 1.5f * obj.scale, d = 3.5f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::HELICOPTER_WRECK: {
+            float w = 4.0f * obj.scale, h = 2.0f * obj.scale, d = 5.0f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::BUNKER: {
+            float w = 5.0f * obj.scale, h = 2.5f * obj.scale, d = 4.0f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::WATCHTOWER: {
+            float r = 1.2f * obj.scale, h = 8.0f * obj.scale;
+            box.min = {obj.position.x - r, obj.position.y, obj.position.z - r};
+            box.max = {obj.position.x + r, obj.position.y + h, obj.position.z + r};
+            break;
+        }
+        case EnvObjectType::TRENCH:
+        case EnvObjectType::CRATER:
+            solid = false;
+            break;
+        case EnvObjectType::BARBED_WIRE: {
+            float w = 3.0f * obj.scale, h = 1.0f * obj.scale, d = 0.3f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::SANDBAG_FORT: {
+            float w = 4.0f * obj.scale, h = 1.5f * obj.scale, d = 2.0f * obj.scale;
+            box.min = {obj.position.x - w * 0.5f, obj.position.y, obj.position.z - d * 0.5f};
+            box.max = {obj.position.x + w * 0.5f, obj.position.y + h, obj.position.z + d * 0.5f};
+            break;
+        }
+        case EnvObjectType::MILITARY_CRATE: {
+            float s = 0.6f * obj.scale;
+            box.min = {obj.position.x - s, obj.position.y, obj.position.z - s};
+            box.max = {obj.position.x + s, obj.position.y + s * 2.0f, obj.position.z + s};
             break;
         }
         default:
@@ -2116,6 +2241,587 @@ Vector3 Map::GetRandomSpawnPoint() const {
 Vector3 Map::GetRandomEnemySpawnPoint() const {
     if (enemySpawnPositions_.empty()) return {0, 1, 5};
     return enemySpawnPositions_[rand() % enemySpawnPositions_.size()];
+}
+
+// ============================================================================
+// WARZONE FORTRESS - Military-themed large-scale map
+// ============================================================================
+
+void Map::GenerateWarzoneFortress() {
+    bounds_ = {150, 25, 150};
+
+    // === Outer Perimeter - Military compound walls (tall, thick) ===
+    // North wall
+    walls_.push_back(Wall{Vector3{-150, 0, -150}, Vector3{150, 0, -150}, 15, 2.0f, (Color){80, 75, 70, 255}});
+    // South wall
+    walls_.push_back(Wall{Vector3{-150, 0, 150}, Vector3{150, 0, 150}, 15, 2.0f, (Color){80, 75, 70, 255}});
+    // West wall
+    walls_.push_back(Wall{Vector3{-150, 0, -150}, Vector3{-150, 0, 150}, 15, 2.0f, (Color){80, 75, 70, 255}});
+    // East wall
+    walls_.push_back(Wall{Vector3{150, 0, -150}, Vector3{150, 0, 150}, 15, 2.0f, (Color){80, 75, 70, 255}});
+
+    // =========================================================================
+    // SECTOR A: Urban Zone (Center-North) - War-torn buildings
+    // =========================================================================
+    // Building 1 - 2-story collapsed building
+    walls_.push_back(Wall{Vector3{-60, 0, -100}, Vector3{-40, 0, -100}, 8, 8.0f, (Color){100, 90, 80, 255}});
+    walls_.push_back(Wall{Vector3{-60, 0, -80}, Vector3{-40, 0, -80}, 8, 8.0f, (Color){100, 90, 80, 255}});
+    walls_.push_back(Wall{Vector3{-60, 0, -100}, Vector3{-60, 0, -80}, 8, 0.5f, (Color){100, 90, 80, 255}});
+    walls_.push_back(Wall{Vector3{-40, 0, -100}, Vector3{-40, 0, -80}, 8, 0.5f, (Color){100, 90, 80, 255}});
+    // 2nd floor platform
+    platforms_.push_back(Platform{
+        {-50, 0, -90}, 18.0f, 18.0f, 4.0f, 0.5f,
+        (Color){90, 85, 75, 255}, (Color){180, 50, 30, 255}, true
+    });
+    staircases_.push_back(Staircase{
+        {-42, 0, -83}, 2.5f, 4.0f, 5.0f, 8, 1.5708f,
+        (Color){80, 75, 65, 255}, (Color){180, 50, 30, 255}
+    });
+
+    // Building 2 - Ruined apartment
+    walls_.push_back(Wall{Vector3{40, 0, -110}, Vector3{60, 0, -110}, 10, 6.0f, (Color){110, 100, 85, 255}});
+    walls_.push_back(Wall{Vector3{40, 0, -90}, Vector3{60, 0, -90}, 10, 6.0f, (Color){110, 100, 85, 255}});
+    walls_.push_back(Wall{Vector3{40, 0, -110}, Vector3{40, 0, -90}, 10, 0.5f, (Color){110, 100, 85, 255}});
+    walls_.push_back(Wall{Vector3{60, 0, -110}, Vector3{60, 0, -90}, 10, 0.5f, (Color){110, 100, 85, 255}});
+    // 2nd floor
+    platforms_.push_back(Platform{
+        {50, 0, -100}, 18.0f, 18.0f, 5.0f, 0.5f,
+        (Color){100, 90, 80, 255}, (Color){200, 80, 30, 255}, true
+    });
+    staircases_.push_back(Staircase{
+        {42, 0, -93}, 2.5f, 5.0f, 5.0f, 10, -1.5708f,
+        (Color){90, 80, 70, 255}, (Color){200, 80, 30, 255}
+    });
+
+    // Building 3 - Small CQC house (center urban)
+    walls_.push_back(Wall{Vector3{-10, 0, -75}, Vector3{10, 0, -75}, 5, 6.0f, (Color){95, 85, 75, 255}});
+    walls_.push_back(Wall{Vector3{-10, 0, -60}, Vector3{10, 0, -60}, 5, 6.0f, (Color){95, 85, 75, 255}});
+    walls_.push_back(Wall{Vector3{-10, 0, -75}, Vector3{-10, 0, -65}, 5, 0.5f, (Color){95, 85, 75, 255}});
+    walls_.push_back(Wall{Vector3{10, 0, -70}, Vector3{10, 0, -60}, 5, 0.5f, (Color){95, 85, 75, 255}});
+    // Interior wall (CQC hallway)
+    walls_.push_back(Wall{Vector3{-2, 0, -73}, Vector3{-2, 0, -62}, 4, 0.3f, (Color){85, 75, 65, 255}});
+
+    // =========================================================================
+    // SECTOR B: Military Compound (East) - Bunkers, watchtowers, sandbags
+    // =========================================================================
+    // Command bunker (underground)
+    envObjects_.push_back(EnvObject{EnvObjectType::BUNKER, {90, 0, -40}, 1.2f, 0.0f, (Color){70, 75, 70, 255}});
+    
+    // Munitions bunker
+    envObjects_.push_back(EnvObject{EnvObjectType::BUNKER, {110, 0, -20}, 1.0f, 0.5f, (Color){65, 70, 65, 255}});
+
+    // Watchtower 1 (North-East)
+    envObjects_.push_back(EnvObject{EnvObjectType::WATCHTOWER, {120, 0, -100}, 1.0f, 0.0f, (Color){60, 65, 55, 255}});
+    // Watchtower platform
+    platforms_.push_back(Platform{
+        {120, 0, -100}, 4.0f, 4.0f, 8.0f, 0.4f,
+        (Color){55, 60, 50, 255}, (Color){200, 60, 30, 255}, true
+    });
+    staircases_.push_back(Staircase{
+        {118, 0, -97}, 2.0f, 8.0f, 5.0f, 16, 0.0f,
+        (Color){65, 70, 60, 255}, (Color){200, 60, 30, 255}
+    });
+
+    // Watchtower 2 (East-center)
+    envObjects_.push_back(EnvObject{EnvObjectType::WATCHTOWER, {130, 0, 20}, 1.0f, 0.3f, (Color){60, 65, 55, 255}});
+    platforms_.push_back(Platform{
+        {130, 0, 20}, 4.0f, 4.0f, 8.0f, 0.4f,
+        (Color){55, 60, 50, 255}, (Color){200, 60, 30, 255}, true
+    });
+    staircases_.push_back(Staircase{
+        {128, 0, 23}, 2.0f, 8.0f, 5.0f, 16, 0.0f,
+        (Color){65, 70, 60, 255}, (Color){200, 60, 30, 255}
+    });
+
+    // Military compound perimeter wall
+    walls_.push_back(Wall{Vector3{75, 0, -110}, Vector3{140, 0, -110}, 6, 0.5f, (Color){85, 80, 70, 255}});
+    walls_.push_back(Wall{Vector3{75, 0, 40}, Vector3{140, 0, 40}, 6, 0.5f, (Color){85, 80, 70, 255}});
+    walls_.push_back(Wall{Vector3{75, 0, -110}, Vector3{75, 0, 40}, 6, 0.5f, (Color){85, 80, 70, 255}});
+    walls_.push_back(Wall{Vector3{140, 0, -110}, Vector3{140, 0, -60}, 6, 0.5f, (Color){85, 80, 70, 255}});
+    walls_.push_back(Wall{Vector3{140, 0, -20}, Vector3{140, 0, 40}, 6, 0.5f, (Color){85, 80, 70, 255}});
+
+    // Sandbag fortifications inside compound
+    envObjects_.push_back(EnvObject{EnvObjectType::SANDBAG_FORT, {95, 0, -70}, 1.0f, 0.0f, (Color){160, 140, 90, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::SANDBAG_FORT, {115, 0, -50}, 1.0f, 0.8f, (Color){155, 135, 85, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::SANDBAG_FORT, {85, 0, -30}, 0.8f, 1.5708f, (Color){160, 140, 90, 255}});
+
+    // Barbed wire barriers
+    envObjects_.push_back(EnvObject{EnvObjectType::BARBED_WIRE, {80, 0, -90}, 1.2f, 0.0f, (Color){120, 110, 100, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::BARBED_WIRE, {100, 0, 30}, 1.0f, 1.5708f, (Color){120, 110, 100, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::BARBED_WIRE, {135, 0, -50}, 1.0f, 1.5708f, (Color){120, 110, 100, 255}});
+
+    // Military crates
+    envObjects_.push_back(EnvObject{EnvObjectType::MILITARY_CRATE, {100, 0, -85}, 1.0f, 0.0f, (Color){60, 80, 40, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::MILITARY_CRATE, {102, 0, -83}, 1.0f, 0.3f, (Color){60, 80, 40, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::MILITARY_CRATE, {105, 0, -85}, 0.8f, 0.6f, (Color){55, 75, 35, 255}});
+
+    // =========================================================================
+    // SECTOR C: Airfield (South) - Hangars, runways, radar station
+    // =========================================================================
+    // Hangar 1 (large open building)
+    walls_.push_back(Wall{Vector3{-80, 0, 60}, Vector3{-50, 0, 60}, 10, 10.0f, (Color){90, 85, 80, 255}});
+    walls_.push_back(Wall{Vector3{-80, 0, 90}, Vector3{-50, 0, 90}, 10, 10.0f, (Color){90, 85, 80, 255}});
+    walls_.push_back(Wall{Vector3{-80, 0, 60}, Vector3{-80, 0, 90}, 10, 0.5f, (Color){90, 85, 80, 255}});
+    // Hangar roof
+    platforms_.push_back(Platform{
+        {-65, 0, 75}, 28.0f, 28.0f, 10.0f, 0.5f,
+        (Color){70, 65, 60, 255}, (Color){180, 50, 30, 255}, false
+    });
+
+    // Hangar 2
+    walls_.push_back(Wall{Vector3{-40, 0, 60}, Vector3{-15, 0, 60}, 8, 8.0f, (Color){95, 90, 85, 255}});
+    walls_.push_back(Wall{Vector3{-40, 0, 80}, Vector3{-15, 0, 80}, 8, 8.0f, (Color){95, 90, 85, 255}});
+    walls_.push_back(Wall{Vector3{-40, 0, 60}, Vector3{-40, 0, 80}, 8, 0.5f, (Color){95, 90, 85, 255}});
+    platforms_.push_back(Platform{
+        {-27, 0, 70}, 23.0f, 18.0f, 8.0f, 0.5f,
+        (Color){75, 70, 65, 255}, (Color){180, 50, 30, 255}, false
+    });
+
+    // Radar/radio station (South-West)
+    envObjects_.push_back(EnvObject{EnvObjectType::SATELLITE_DISH, {-100, 0, 100}, 1.5f, 0.0f, (Color){150, 150, 160, 255}});
+    // Radar platform
+    platforms_.push_back(Platform{
+        {-100, 0, 110}, 6.0f, 6.0f, 3.0f, 0.5f,
+        (Color){70, 75, 70, 255}, (Color){255, 200, 30, 255}, true
+    });
+    staircases_.push_back(Staircase{
+        {-97, 0, 107}, 2.0f, 3.0f, 4.0f, 6, 0.0f,
+        (Color){80, 85, 80, 255}, (Color){255, 200, 30, 255}
+    });
+
+    // =========================================================================
+    // MAIN ROADS & STREET SYSTEM
+    // =========================================================================
+    // Central Avenue (North-South)
+    // Road barriers and checkpoints along main road
+    envObjects_.push_back(EnvObject{EnvObjectType::CONCRETE_BARRIER, {0, 0, -50}, 1.2f, 0.0f, (Color){140, 135, 125, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::CONCRETE_BARRIER, {5, 0, -40}, 1.2f, 0.0f, (Color){140, 135, 125, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::CONCRETE_BARRIER, {-5, 0, -30}, 1.2f, 0.0f, (Color){140, 135, 125, 255}});
+
+    // Cross road (East-West)
+    envObjects_.push_back(EnvObject{EnvObjectType::CONCRETE_BARRIER, {-30, 0, 0}, 1.0f, 1.5708f, (Color){140, 135, 125, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::CONCRETE_BARRIER, {30, 0, 0}, 1.0f, 1.5708f, (Color){140, 135, 125, 255}});
+
+    // =========================================================================
+    // MILITARY VEHICLE WRECKS (street cover)
+    // =========================================================================
+    // Tank wreck on main avenue
+    envObjects_.push_back(EnvObject{EnvObjectType::TANK_WRECK, {0, 0, -15}, 1.0f, 0.3f, (Color){80, 85, 60, 255}});
+    
+    // Humvee wreck near checkpoint
+    envObjects_.push_back(EnvObject{EnvObjectType::HUMVEE_WRECK, {10, 0, -45}, 1.0f, 0.8f, (Color){90, 95, 65, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::HUMVEE_WRECK, {-15, 0, 20}, 1.0f, -0.5f, (Color){85, 90, 60, 255}});
+
+    // Helicopter wreck in open field
+    envObjects_.push_back(EnvObject{EnvObjectType::HELICOPTER_WRECK, {40, 0, 30}, 1.0f, 0.2f, (Color){70, 75, 55, 255}});
+
+    // Second tank on south road
+    envObjects_.push_back(EnvObject{EnvObjectType::TANK_WRECK, {-20, 0, 50}, 1.0f, -0.4f, (Color){75, 80, 55, 255}});
+
+    // =========================================================================
+    // CRATERS & TRENCHES (war damage)
+    // =========================================================================
+    envObjects_.push_back(EnvObject{EnvObjectType::CRATER, {20, 0, -60}, 1.5f, 0.0f, (Color){70, 60, 45, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::CRATER, {-30, 0, -20}, 1.2f, 0.0f, (Color){65, 55, 40, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::CRATER, {60, 0, 50}, 1.0f, 0.0f, (Color){60, 50, 35, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::CRATER, {-70, 0, 30}, 1.3f, 0.0f, (Color){65, 55, 40, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::CRATER, {30, 0, 120}, 1.4f, 0.0f, (Color){60, 50, 35, 255}});
+
+    // Trench systems (West field)
+    envObjects_.push_back(EnvObject{EnvObjectType::TRENCH, {-100, 0, -30}, 1.5f, 0.0f, (Color){80, 70, 50, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::TRENCH, {-110, 0, -15}, 1.5f, 1.5708f, (Color){80, 70, 50, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::TRENCH, {-100, 0, 0}, 1.5f, 3.14159f, (Color){80, 70, 50, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::TRENCH, {-90, 0, -15}, 1.5f, -1.5708f, (Color){80, 70, 50, 255}});
+
+    // Trench near south
+    envObjects_.push_back(EnvObject{EnvObjectType::TRENCH, {50, 0, 100}, 1.2f, 0.5f, (Color){75, 65, 45, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::TRENCH, {60, 0, 110}, 1.2f, 1.0f, (Color){75, 65, 45, 255}});
+
+    // =========================================================================
+    // ELEVATED POSITIONS & SNIPER VANTAGE POINTS
+    // =========================================================================
+    // Water tower (South-East) - classic sniper spot
+    platforms_.push_back(Platform{
+        {100, 0, 100}, 5.0f, 5.0f, 12.0f, 0.5f,
+        (Color){65, 70, 60, 255}, (Color){200, 60, 30, 255}, true
+    });
+    // Water tower pillar
+    pillars_.push_back(Pillar{{98, 0, 98}, 0.8f, 12, (Color){70, 75, 65, 255}, (Color){80, 85, 75, 255}});
+    pillars_.push_back(Pillar{{102, 0, 98}, 0.8f, 12, (Color){70, 75, 65, 255}, (Color){80, 85, 75, 255}});
+    pillars_.push_back(Pillar{{98, 0, 102}, 0.8f, 12, (Color){70, 75, 65, 255}, (Color){80, 85, 75, 255}});
+    pillars_.push_back(Pillar{{102, 0, 102}, 0.8f, 12, (Color){70, 75, 65, 255}, (Color){80, 85, 75, 255}});
+    staircases_.push_back(Staircase{
+        {95, 0, 98}, 2.0f, 12.0f, 6.0f, 24, -1.5708f,
+        (Color){75, 80, 70, 255}, (Color){200, 60, 30, 255}
+    });
+
+    // Hill/ramp in West field (elevated shooting position)
+    ramps_.push_back(Ramp{
+        {-80, 0, -50}, 10.0f, 12.0f, 0.0f, 4.0f, 0.0f,
+        (Color){75, 70, 55, 255}, (Color){160, 100, 30, 255}
+    });
+    platforms_.push_back(Platform{
+        {-80, 0, -56}, 10.0f, 6.0f, 4.0f, 0.5f,
+        (Color){70, 65, 50, 255}, (Color){200, 60, 30, 255}, true
+    });
+
+    // =========================================================================
+    // COVER OBJECTS (scattered across streets)
+    // =========================================================================
+    // Sandbag walls along streets
+    envObjects_.push_back(EnvObject{EnvObjectType::SANDBAG_WALL, {-5, 0, -10}, 1.2f, 0.0f, (Color){160, 140, 90, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::SANDBAG_WALL, {5, 0, 10}, 1.2f, 1.5708f, (Color){160, 140, 90, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::SANDBAG_WALL, {20, 0, -5}, 1.0f, 0.8f, (Color){155, 135, 85, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::SANDBAG_WALL, {-25, 0, 15}, 1.0f, 0.3f, (Color){160, 140, 90, 255}});
+
+    // Regular crates and barrels
+    envObjects_.push_back(EnvObject{EnvObjectType::CRATE, {-20, 0, -5}, 1.0f, 0.0f, (Color){140, 100, 50, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::CRATE, {25, 0, -30}, 1.2f, 0.5f, (Color){150, 110, 55, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::CRATE, {-35, 0, 40}, 1.0f, 0.8f, (Color){140, 100, 50, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::BARREL, {15, 0, 15}, 1.0f, 0.0f, (Color){180, 50, 30, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::BARREL, {-15, 0, 30}, 1.0f, 0.5f, (Color){50, 100, 180, 255}});
+
+    // Rocks in open fields
+    envObjects_.push_back(EnvObject{EnvObjectType::ROCK_LARGE, {-120, 0, 50}, 2.0f, 0.3f, (Color){90, 85, 75, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::ROCK_LARGE, {70, 0, -60}, 1.8f, 0.7f, (Color){95, 90, 80, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::ROCK_LARGE, {40, 0, 110}, 1.5f, 0.0f, (Color){85, 80, 70, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::ROCK_SMALL, {-50, 0, 60}, 1.0f, 0.5f, (Color){100, 95, 85, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::ROCK_SMALL, {80, 0, 80}, 0.8f, 1.0f, (Color){95, 90, 80, 255}});
+
+    // Metal barriers near checkpoints
+    envObjects_.push_back(EnvObject{EnvObjectType::METAL_BARRIER, {-3, 0, -45}, 1.0f, 0.0f, (Color){200, 200, 50, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::METAL_BARRIER, {3, 0, -45}, 1.0f, 0.0f, (Color){200, 200, 50, 255}});
+
+    // More military crates scattered
+    envObjects_.push_back(EnvObject{EnvObjectType::MILITARY_CRATE, {30, 0, 70}, 1.0f, 0.2f, (Color){60, 80, 40, 255}});
+    envObjects_.push_back(EnvObject{EnvObjectType::MILITARY_CRATE, {-60, 0, 85}, 0.8f, 0.0f, (Color){55, 75, 35, 255}});
+
+    // =========================================================================
+    // PILLARS - Building supports
+    // =========================================================================
+    pillars_.push_back(Pillar{{-55, 0, -92}, 0.5f, 8, (Color){95, 85, 75, 255}, (Color){105, 95, 85, 255}});
+    pillars_.push_back(Pillar{{-45, 0, -92}, 0.5f, 8, (Color){95, 85, 75, 255}, (Color){105, 95, 85, 255}});
+    pillars_.push_back(Pillar{{45, 0, -102}, 0.5f, 10, (Color){100, 90, 80, 255}, (Color){110, 100, 90, 255}});
+    pillars_.push_back(Pillar{{55, 0, -102}, 0.5f, 10, (Color){100, 90, 80, 255}, (Color){110, 100, 90, 255}});
+
+    // =========================================================================
+    // NEON / MILITARY LIGHTING (red warning, amber, green tactical)
+    // =========================================================================
+    // Military compound warning lights (red)
+    neonLights_.push_back(NeonLight{{76, 0, -105}, {76, 0, -80}, 7.0f, (Color){255, 30, 20, 255}, 0.6f});
+    neonLights_.push_back(NeonLight{{139, 0, -80}, {139, 0, -60}, 7.0f, (Color){255, 30, 20, 255}, 0.6f});
+    neonLights_.push_back(NeonLight{{76, 0, 35}, {76, 0, 20}, 7.0f, (Color){255, 30, 20, 255}, 0.6f});
+
+    // Hangar amber lights
+    neonLights_.push_back(NeonLight{{-78, 0, 65}, {-52, 0, 65}, 10.5f, (Color){255, 180, 30, 255}, 0.4f});
+    neonLights_.push_back(NeonLight{{-78, 0, 85}, {-52, 0, 85}, 10.5f, (Color){255, 180, 30, 255}, 0.4f});
+
+    // Green tactical lights near trenches
+    neonLights_.push_back(NeonLight{{-105, 0, -35}, {-95, 0, -35}, 1.5f, (Color){30, 200, 30, 255}, 0.3f});
+    neonLights_.push_back(NeonLight{{-105, 0, 5}, {-95, 0, 5}, 1.5f, (Color){30, 200, 30, 255}, 0.3f});
+
+    // Water tower red beacon
+    neonLights_.push_back(NeonLight{{98, 0, 98}, {102, 0, 98}, 13.0f, (Color){255, 40, 20, 255}, 0.8f});
+    neonLights_.push_back(NeonLight{{102, 0, 98}, {102, 0, 102}, 13.0f, (Color){255, 40, 20, 255}, 0.8f});
+    neonLights_.push_back(NeonLight{{102, 0, 102}, {98, 0, 102}, 13.0f, (Color){255, 40, 20, 255}, 0.8f});
+    neonLights_.push_back(NeonLight{{98, 0, 102}, {98, 0, 98}, 13.0f, (Color){255, 40, 20, 255}, 0.8f});
+
+    // Radar station lights
+    neonLights_.push_back(NeonLight{{-103, 0, 107}, {-97, 0, 107}, 3.5f, (Color){255, 200, 30, 255}, 0.5f});
+    neonLights_.push_back(NeonLight{{-97, 0, 107}, {-97, 0, 113}, 3.5f, (Color){255, 200, 30, 255}, 0.5f});
+
+    // =========================================================================
+    // ARCHES / Entry points
+    // =========================================================================
+    arches_.push_back(ArchStruct{{0, 0, -148}, 6.0f, 8.0f, 2.0f, 0.0f,
+        (Color){90, 85, 75, 255}, (Color){255, 50, 30, 255}});
+    arches_.push_back(ArchStruct{{75, 0, -35}, 4.0f, 6.0f, 0.5f, 1.5708f,
+        (Color){85, 80, 70, 255}, (Color){255, 30, 20, 255}});
+
+    // =========================================================================
+    // SPAWN POINTS
+    // =========================================================================
+    spawnPositions_ = {
+        {-140, 1, -140}, {140, 1, -140}, {-140, 1, 140}, {140, 1, 140},
+        {0, 1, -140}, {0, 1, 140}, {-140, 1, 0}, {140, 1, 0},
+        {-50, 1, -85}, {50, 1, -100}, {-65, 5, -90}, {50, 6, -100},
+        {100, 1, -40}, {120, 9, -100}, {100, 13, 100}
+    };
+
+    enemySpawnPositions_ = {
+        {-50, 1, -90}, {50, 1, -100}, {-10, 1, -68}, {10, 1, -68},
+        {0, 1, -15}, {0, 1, 15}, {-20, 1, 50}, {20, 1, 50},
+        {-65, 1, 75}, {-27, 1, 70}, {90, 1, -40}, {110, 1, -20},
+        {-100, 1, -15}, {-80, 5, -53}, {40, 1, 30},
+        {-30, 1, -20}, {60, 1, 110}, {-120, 1, 50},
+        {30, 1, 70}, {-60, 1, 85}, {130, 9, 20}
+    };
+
+    coverPositions_ = {
+        {0, 1, -15}, {-5, 1, -10}, {5, 1, 10},
+        {-20, 1, -5}, {25, 1, -30}, {-100, 1, -15}
+    };
+}
+
+// ============================================================================
+// MILITARY OBJECT RENDERERS
+// ============================================================================
+
+void Map::RenderTankWreck(const EnvObject& obj) const {
+    float s = obj.scale;
+    // Hull - large rectangular body
+    DrawTexturedBox(texMetal_, {obj.position.x, s * 0.5f, obj.position.z},
+        3.0f * s, 1.2f * s, 5.0f * s, (Color){100, 105, 70, 255}, 0.3f);
+    // Turret base (slightly off-center, rotated)
+    DrawTexturedBox(texRust_, {obj.position.x + 0.3f * s, s * 1.3f, obj.position.z - 0.5f * s},
+        1.8f * s, 0.6f * s, 2.0f * s, (Color){90, 95, 60, 255}, 0.3f);
+    // Barrel (gun tube, pointing forward)
+    DrawTexturedBox(texMetal_, {obj.position.x + 0.3f * s, s * 1.4f, obj.position.z - 2.5f * s},
+        0.2f * s, 0.2f * s, 2.5f * s, (Color){60, 65, 45, 255}, 0.5f);
+    // Track left
+    DrawTexturedBox(texRust_, {obj.position.x - 1.5f * s, s * 0.25f, obj.position.z},
+        0.5f * s, 0.5f * s, 5.0f * s, (Color){50, 55, 35, 255}, 0.3f);
+    // Track right
+    DrawTexturedBox(texRust_, {obj.position.x + 1.5f * s, s * 0.25f, obj.position.z},
+        0.5f * s, 0.5f * s, 5.0f * s, (Color){50, 55, 35, 255}, 0.3f);
+    // Damage marks - dark scorch
+    DrawTexturedBox(texRust_, {obj.position.x, s * 0.6f, obj.position.z + 1.0f * s},
+        1.5f * s, 0.3f * s, 1.0f * s, (Color){30, 25, 20, 255}, 0.5f);
+    // Military edge highlight
+    Color edgeColor = {180, 50, 30, 255};
+    DrawLine3D({obj.position.x - 1.5f * s, s * 1.2f, obj.position.z - 2.5f * s},
+               {obj.position.x + 1.5f * s, s * 1.2f, obj.position.z - 2.5f * s}, Fade(edgeColor, 0.3f));
+}
+
+void Map::RenderHumveeWreck(const EnvObject& obj) const {
+    float s = obj.scale;
+    // Body
+    DrawTexturedBox(texMetal_, {obj.position.x, s * 0.5f, obj.position.z},
+        2.0f * s, 1.0f * s, 3.5f * s, (Color){110, 120, 75, 255}, 0.3f);
+    // Cabin
+    DrawTexturedBox(texMetal_, {obj.position.x, s * 1.1f, obj.position.z - 0.3f * s},
+        1.6f * s, 0.6f * s, 1.8f * s, (Color){100, 110, 70, 255}, 0.3f);
+    // Hood (front, slightly tilted)
+    DrawTexturedBox(texRust_, {obj.position.x, s * 0.8f, obj.position.z + 1.2f * s},
+        1.8f * s, 0.3f * s, 1.0f * s, (Color){90, 100, 65, 255}, 0.3f);
+    // Wheels (4 cylinders approximated as boxes)
+    Color wheelColor = {30, 30, 25, 255};
+    DrawTexturedBox(texRust_, {obj.position.x - 1.0f * s, s * 0.2f, obj.position.z + 1.0f * s},
+        0.3f * s, 0.4f * s, 0.3f * s, wheelColor, 0.5f);
+    DrawTexturedBox(texRust_, {obj.position.x + 1.0f * s, s * 0.2f, obj.position.z + 1.0f * s},
+        0.3f * s, 0.4f * s, 0.3f * s, wheelColor, 0.5f);
+    DrawTexturedBox(texRust_, {obj.position.x - 1.0f * s, s * 0.2f, obj.position.z - 1.0f * s},
+        0.3f * s, 0.4f * s, 0.3f * s, wheelColor, 0.5f);
+    DrawTexturedBox(texRust_, {obj.position.x + 1.0f * s, s * 0.2f, obj.position.z - 1.0f * s},
+        0.3f * s, 0.4f * s, 0.3f * s, wheelColor, 0.5f);
+}
+
+void Map::RenderHelicopterWreck(const EnvObject& obj) const {
+    float s = obj.scale;
+    // Main fuselage - tilted on side
+    DrawTexturedBox(texMetal_, {obj.position.x, s * 0.6f, obj.position.z},
+        2.0f * s, 1.5f * s, 4.0f * s, (Color){80, 85, 60, 255}, 0.3f);
+    // Cockpit (front, tilted)
+    DrawTexturedBox(texMetal_, {obj.position.x + 0.5f * s, s * 0.4f, obj.position.z - 2.5f * s},
+        1.2f * s, 0.8f * s, 1.0f * s, (Color){70, 75, 55, 255}, 0.3f);
+    // Tail boom (broken, offset)
+    DrawTexturedBox(texRust_, {obj.position.x - 1.0f * s, s * 0.9f, obj.position.z + 3.0f * s},
+        0.5f * s, 0.4f * s, 2.5f * s, (Color){75, 80, 55, 255}, 0.3f);
+    // Rotor blade (broken, on ground nearby)
+    DrawTexturedBox(texMetal_, {obj.position.x + 3.0f * s, s * 0.05f, obj.position.z + 1.0f * s},
+        5.0f * s, 0.05f * s, 0.3f * s, (Color){90, 95, 65, 255}, 0.5f);
+    // Second blade
+    DrawTexturedBox(texMetal_, {obj.position.x - 2.0f * s, s * 0.05f, obj.position.z - 2.0f * s},
+        4.0f * s, 0.05f * s, 0.3f * s, (Color){85, 90, 60, 255}, 0.5f);
+    // Scorch marks
+    DrawTexturedBox(texRust_, {obj.position.x, s * 0.05f, obj.position.z},
+        3.0f * s, 0.02f * s, 3.0f * s, (Color){25, 20, 15, 255}, 0.8f);
+}
+
+void Map::RenderBunker(const EnvObject& obj) const {
+    float s = obj.scale;
+    // Main bunker body - thick concrete
+    DrawTexturedBox(texConcrete_, {obj.position.x, s * 1.25f, obj.position.z},
+        5.0f * s, 2.5f * s, 4.0f * s, (Color){80, 85, 75, 255}, 0.3f);
+    // Earth covering (top)
+    DrawTexturedBox(texStone_, {obj.position.x, s * 2.6f, obj.position.z},
+        5.5f * s, 0.5f * s, 4.5f * s, (Color){70, 65, 45, 255}, 0.3f);
+    // Entrance (dark opening)
+    DrawTexturedBox(texConcrete_, {obj.position.x, s * 0.75f, obj.position.z + 2.1f * s},
+        2.0f * s, 1.5f * s, 0.3f * s, (Color){20, 20, 20, 255}, 0.5f);
+    // Door frame
+    Color frameColor = {180, 50, 30, 255};
+    DrawLine3D({obj.position.x - 1.0f * s, 0, obj.position.z + 2.2f * s},
+               {obj.position.x - 1.0f * s, s * 1.5f, obj.position.z + 2.2f * s}, Fade(frameColor, 0.5f));
+    DrawLine3D({obj.position.x + 1.0f * s, 0, obj.position.z + 2.2f * s},
+               {obj.position.x + 1.0f * s, s * 1.5f, obj.position.z + 2.2f * s}, Fade(frameColor, 0.5f));
+    DrawLine3D({obj.position.x - 1.0f * s, s * 1.5f, obj.position.z + 2.2f * s},
+               {obj.position.x + 1.0f * s, s * 1.5f, obj.position.z + 2.2f * s}, Fade(frameColor, 0.5f));
+    // Ventilation pipe on top
+    DrawTexturedCylinder(texMetal_, {obj.position.x + 1.5f * s, s * 3.0f, obj.position.z}, 0.2f * s, 0.8f * s, 8, (Color){70, 75, 65, 255});
+}
+
+void Map::RenderWatchtower(const EnvObject& obj) const {
+    float s = obj.scale;
+    // 4 support legs
+    Color legColor = {60, 65, 55, 255};
+    float legOff = 1.0f * s;
+    float legR = 0.15f * s;
+    // Front-left leg
+    DrawTexturedCylinder(texMetal_, {obj.position.x - legOff, s * 4.0f, obj.position.z - legOff}, legR, 8.0f * s, 6, legColor);
+    // Front-right leg
+    DrawTexturedCylinder(texMetal_, {obj.position.x + legOff, s * 4.0f, obj.position.z - legOff}, legR, 8.0f * s, 6, legColor);
+    // Back-left leg
+    DrawTexturedCylinder(texMetal_, {obj.position.x - legOff, s * 4.0f, obj.position.z + legOff}, legR, 8.0f * s, 6, legColor);
+    // Back-right leg
+    DrawTexturedCylinder(texMetal_, {obj.position.x + legOff, s * 4.0f, obj.position.z + legOff}, legR, 8.0f * s, 6, legColor);
+    // Observation platform (at top - handled by Platform struct separately)
+    // Cross braces
+    DrawLine3D({obj.position.x - legOff, s * 2.0f, obj.position.z - legOff},
+               {obj.position.x + legOff, s * 2.0f, obj.position.z + legOff}, Fade(legColor, 0.4f));
+    DrawLine3D({obj.position.x + legOff, s * 2.0f, obj.position.z - legOff},
+               {obj.position.x - legOff, s * 2.0f, obj.position.z + legOff}, Fade(legColor, 0.4f));
+    // Red warning light at top
+    float pulse = sinf(animTime_ * 3.0f) * 0.5f + 0.5f;
+    DrawSphere({obj.position.x, s * 8.2f, obj.position.z}, 0.15f * s, Fade((Color){255, 30, 20, 255}, pulse));
+}
+
+void Map::RenderTrench(const EnvObject& obj) const {
+    float s = obj.scale;
+    // Trench walls (raised earth sides)
+    // Left wall
+    DrawTexturedBox(texStone_, {obj.position.x - 1.0f * s, s * 0.5f, obj.position.z},
+        0.5f * s, 1.0f * s, 6.0f * s, (Color){85, 75, 50, 255}, 0.3f);
+    // Right wall
+    DrawTexturedBox(texStone_, {obj.position.x + 1.0f * s, s * 0.5f, obj.position.z},
+        0.5f * s, 1.0f * s, 6.0f * s, (Color){85, 75, 50, 255}, 0.3f);
+    // Trench floor (dark, sunken appearance)
+    DrawTexturedBox(texRust_, {obj.position.x, s * -0.15f, obj.position.z},
+        1.5f * s, 0.3f * s, 6.0f * s, (Color){45, 35, 20, 255}, 0.5f);
+    // Sandbag edge reinforcement
+    DrawTexturedBox(texCrate_, {obj.position.x - 1.2f * s, s * 0.9f, obj.position.z},
+        0.3f * s, 0.3f * s, 6.0f * s, (Color){160, 140, 90, 255}, 0.5f);
+    DrawTexturedBox(texCrate_, {obj.position.x + 1.2f * s, s * 0.9f, obj.position.z},
+        0.3f * s, 0.3f * s, 6.0f * s, (Color){160, 140, 90, 255}, 0.5f);
+}
+
+void Map::RenderCrater(const EnvObject& obj) const {
+    float s = obj.scale;
+    // Outer rim (raised earth ring)
+    float rimR = 3.0f * s;
+    float rimH = 0.5f * s;
+    // Approximate ring with 8 boxes
+    for (int i = 0; i < 8; i++) {
+        float angle = i * PI / 4.0f;
+        float x = obj.position.x + cosf(angle) * rimR * 0.7f;
+        float z = obj.position.z + sinf(angle) * rimR * 0.7f;
+        DrawTexturedBox(texStone_, {x, rimH * 0.5f, z},
+            1.5f * s, rimH, 1.0f * s, (Color){80, 70, 45, 255}, 0.3f);
+    }
+    // Crater floor (sunken, scorched)
+    DrawTexturedBox(texRust_, {obj.position.x, -0.2f * s, obj.position.z},
+        3.0f * s, 0.4f * s, 3.0f * s, (Color){35, 25, 15, 255}, 0.5f);
+    // Center scorch
+    DrawTexturedBox(texRust_, {obj.position.x, -0.05f * s, obj.position.z},
+        1.5f * s, 0.1f * s, 1.5f * s, (Color){20, 15, 10, 255}, 0.8f);
+}
+
+void Map::RenderBarbedWire(const EnvObject& obj) const {
+    float s = obj.scale;
+    // Support posts
+    float postH = 1.0f * s;
+    float wireLen = 3.0f * s;
+    // Post 1
+    DrawTexturedCylinder(texMetal_, {obj.position.x - wireLen * 0.5f, postH * 0.5f, obj.position.z},
+        0.05f * s, postH, 6, (Color){100, 95, 85, 255});
+    // Post 2
+    DrawTexturedCylinder(texMetal_, {obj.position.x + wireLen * 0.5f, postH * 0.5f, obj.position.z},
+        0.05f * s, postH, 6, (Color){100, 95, 85, 255});
+    // Wire lines (3 rows)
+    Color wireColor = {150, 145, 135, 255};
+    for (int row = 0; row < 3; row++) {
+        float y = postH * (0.3f + row * 0.3f);
+        DrawLine3D({obj.position.x - wireLen * 0.5f, y, obj.position.z},
+                   {obj.position.x + wireLen * 0.5f, y, obj.position.z}, Fade(wireColor, 0.6f));
+        // Zigzag barbs
+        for (int j = 0; j < 6; j++) {
+            float t = (j + 0.5f) / 6.0f;
+            float bx = obj.position.x - wireLen * 0.5f + wireLen * t;
+            DrawLine3D({bx, y, obj.position.z}, {bx, y + 0.1f * s, obj.position.z + 0.15f * s}, Fade(wireColor, 0.4f));
+            DrawLine3D({bx, y, obj.position.z}, {bx, y + 0.1f * s, obj.position.z - 0.15f * s}, Fade(wireColor, 0.4f));
+        }
+    }
+    // Warning marker
+    Color warnColor = {255, 200, 30, 255};
+    float pulse = sinf(animTime_ * 2.0f) * 0.3f + 0.7f;
+    DrawLine3D({obj.position.x - wireLen * 0.5f, postH, obj.position.z},
+               {obj.position.x + wireLen * 0.5f, postH, obj.position.z}, Fade(warnColor, 0.3f * pulse));
+}
+
+void Map::RenderSandbagFort(const EnvObject& obj) const {
+    float s = obj.scale;
+    // Base layer - 2 rows of sandbags
+    float bagW = 0.6f * s, bagH = 0.3f * s, bagD = 0.4f * s;
+    Color bagColor = (Color){160, 140, 90, 255};
+    Color bagDark = (Color){140, 120, 75, 255};
+
+    // Front row
+    for (int i = -2; i <= 2; i++) {
+        DrawTexturedBox(texCrate_, {obj.position.x + i * bagW * 1.1f, bagH * 0.5f, obj.position.z - bagD * 0.6f},
+            bagW, bagH, bagD, bagColor, 0.5f);
+    }
+    // Back row
+    for (int i = -2; i <= 2; i++) {
+        DrawTexturedBox(texCrate_, {obj.position.x + i * bagW * 1.1f, bagH * 0.5f, obj.position.z + bagD * 0.6f},
+            bagW, bagH, bagD, bagColor, 0.5f);
+    }
+    // Second layer (offset, like brick pattern)
+    for (int i = -1; i <= 2; i++) {
+        DrawTexturedBox(texCrate_, {obj.position.x + (i + 0.5f) * bagW * 1.1f, bagH * 1.5f, obj.position.z - bagD * 0.3f},
+            bagW, bagH, bagD, bagDark, 0.5f);
+        DrawTexturedBox(texCrate_, {obj.position.x + (i + 0.5f) * bagW * 1.1f, bagH * 1.5f, obj.position.z + bagD * 0.3f},
+            bagW, bagH, bagD, bagDark, 0.5f);
+    }
+    // Third layer (center only, like a parapet)
+    for (int i = -1; i <= 1; i++) {
+        DrawTexturedBox(texCrate_, {obj.position.x + i * bagW * 1.1f, bagH * 2.5f, obj.position.z},
+            bagW, bagH, bagD * 0.8f, bagColor, 0.5f);
+    }
+    // Side walls
+    DrawTexturedBox(texCrate_, {obj.position.x - 2.2f * bagW, bagH * 0.5f, obj.position.z},
+        bagD, bagH, bagD * 3.0f, bagDark, 0.5f);
+    DrawTexturedBox(texCrate_, {obj.position.x + 2.2f * bagW, bagH * 0.5f, obj.position.z},
+        bagD, bagH, bagD * 3.0f, bagDark, 0.5f);
+}
+
+void Map::RenderMilitaryCrate(const EnvObject& obj) const {
+    float s = obj.scale;
+    // Main box (olive drab)
+    DrawTexturedBox(texCrate_, {obj.position.x, s * 0.5f, obj.position.z},
+        1.2f * s, 1.0f * s, 1.2f * s, (Color){60, 80, 40, 255}, 0.5f);
+    // Metal corner reinforcements
+    Color metalColor = {120, 115, 100, 255};
+    float hs = 0.6f * s;
+    DrawLine3D({obj.position.x - hs, 0, obj.position.z - hs},
+               {obj.position.x - hs, s, obj.position.z - hs}, Fade(metalColor, 0.4f));
+    DrawLine3D({obj.position.x + hs, 0, obj.position.z - hs},
+               {obj.position.x + hs, s, obj.position.z - hs}, Fade(metalColor, 0.4f));
+    DrawLine3D({obj.position.x - hs, 0, obj.position.z + hs},
+               {obj.position.x - hs, s, obj.position.z + hs}, Fade(metalColor, 0.4f));
+    DrawLine3D({obj.position.x + hs, 0, obj.position.z + hs},
+               {obj.position.x + hs, s, obj.position.z + hs}, Fade(metalColor, 0.4f));
+    // Top cross straps
+    Color strapColor = {100, 95, 80, 255};
+    DrawLine3D({obj.position.x - hs, s, obj.position.z - hs},
+               {obj.position.x + hs, s, obj.position.z + hs}, Fade(strapColor, 0.5f));
+    DrawLine3D({obj.position.x + hs, s, obj.position.z - hs},
+               {obj.position.x - hs, s, obj.position.z + hs}, Fade(strapColor, 0.5f));
+    // Yellow warning stripe
+    Color warnColor = {200, 180, 30, 255};
+    DrawLine3D({obj.position.x - hs, s * 0.3f, obj.position.z + hs + 0.01f},
+               {obj.position.x + hs, s * 0.3f, obj.position.z + hs + 0.01f}, Fade(warnColor, 0.6f));
+    DrawLine3D({obj.position.x - hs, s * 0.7f, obj.position.z + hs + 0.01f},
+               {obj.position.x + hs, s * 0.7f, obj.position.z + hs + 0.01f}, Fade(warnColor, 0.6f));
 }
 
 } // namespace EOSShooter
